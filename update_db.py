@@ -40,7 +40,7 @@ def get_data(url):
 
 def compute_distance(df, lap_start_time):
     dt = (df['date'] - datetime.now()).dt.total_seconds().diff()
-    dt.iloc[0] = (df['date'].iloc[0] - pd.to_datetime(lap_start_time)).total_seconds()
+    dt.iloc[0] = (df['date'].iloc[0] - pd.to_datetime(lap_start_time, format='ISO8601')).total_seconds()
     ds = df['speed'] / 3.6 * dt
     df['distance'] = ds.cumsum()
     
@@ -52,11 +52,30 @@ def get_data_channels(session_key, start_time, end_time):
 
   return car_data, location_data
 
+def get_weather_data(session_key, start_time, end_time):
+  url = f'''https://api.openf1.org/v1/weather?&session_key={session_key}&date<{end_time}&date>={start_time}'''
+  weather = get_data(url)
+  if len(weather):
+    # weather['date'] = pd.to_datetime(weather['date'], format='ISO8601')
+    return weather
+  else:
+    return pd.DataFrame()
+
+
+def get_laptimes_data(session_key, start_time, end_time):
+  url = f'''https://api.openf1.org/v1/laps?&session_key={session_key}&date_start<{end_time}&date_start>={start_time}'''
+  laptimes = get_data(url)
+  if len(laptimes):
+    # laptimes['date_start'] = pd.to_datetime(laptimes['date_start'], format='ISO8601')
+    return laptimes
+  else:
+    return pd.DataFrame()
+
 
 def merge_data_channels(car_data, location_data):
 
   merged = pd.merge(car_data, location_data, how = 'outer', on = ['date', 'meeting_key', 'session_key', 'driver_number']).sort_values(by = 'date')
-  merged['date'] = pd.to_datetime(merged['date'])
+  merged['date'] = pd.to_datetime(merged['date'], format='ISO8601')
   merged.set_index('date', inplace = True)
   merged[['n_gear', 'drs']] = merged[['n_gear', 'drs']].ffill().ffill().bfill()
   merged[['rpm', 'speed', 'throttle', 'brake']] = merged[['rpm', 'speed', 'throttle', 'brake']].interpolate(method = 'polynomial', order = 1, limit_direction = 'both')
@@ -161,71 +180,58 @@ before_start_line = (-400, 873)
 after_start_line = (-330, 2433)
 
 start_time = '2024-03-02T15:00:30.000000'
-end_time = '2024-03-02T16:10:00.000000'
+end_time = '2024-03-02T17:00:00.000000'
 
 session_key = 9472
 
 thresh = 100
 circuit_length = 5412
 
-interval = 30
+interval = 20
 
 data = {}
 data['data'] = {}
 data['lap_number'] = {}
 for driver_code, driver_number in driver_config.items():
   data['data'][driver_number] = pd.DataFrame()
-  data['lap_number'][driver_number] = 0
+  data['lap_number'][driver_code] = 0
 
 for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):
+  
+  t1 = time.time()
   st = timestamp
   et = timestamp + timedelta(seconds = interval)
-  # print(st)
-  #t1 = time.time()
-  retries = 0
-  while True or retries<10:
-    try:
-      car_data, location_data = get_data_channels(session_key, st, et)
-    except Exception as e:
-      retries += 1
-      print(e)
-      print("Retrying ...")
-      continue
-    break
-   
-  if retries>10:
-    break
-  #print(time.time()-t1)
+
+  # try:
+  weather_data = get_weather_data(session_key, st, et)
+  laptimes_data = get_laptimes_data(session_key, st, et)
+  if len(weather_data):
+    weather_data.map(str).to_sql('weather', engine, if_exists = 'append', index = False)
+  if len(laptimes_data):
+    laptimes_data.map(str).to_sql('laptimes', engine, if_exists = 'append', index = False)
+  # except Exception as e:
+  #   print(f'{driver_number} failed')
+  #   print(f'{e} exception')
+
+  car_data, location_data = get_data_channels(session_key, st, et)
+  telemetry_data = pd.DataFrame()
+    
   for driver_code, driver_number in driver_config.items():
-    
-    
     try:
-      #t2 = time.time()
-      merged_data = merge_data_channels(car_data.loc[car_data["driver_number"]==driver_number], location_data.loc[location_data["driver_number"]==driver_number]).sort_values(by="date")
-      #t3 = time.time()
-      #print(f"Merge channels : {t3-t2}")
+      merged_data = merge_data_channels(car_data[car_data["driver_number"]==driver_number].sort_values(by="date"), location_data[location_data["driver_number"]==driver_number].sort_values(by="date"))
       merged_data['distance_l2'] = merged_data.apply(lambda row: compute_l2((row.x, row.y), start_line, before_start_line, after_start_line), axis = 1)/10
       merged_data['distance_regr'] = knn.predict(np.asarray(merged_data[['x', 'y']]))
       merged_data['actual_distance'] = merged_data.apply(lambda row: get_best_distance(row.distance_l2, row.distance_regr, thresh, circuit_length), axis = 1)
-      merged_data['lap_number'] = assign_lap_number(merged_data, data['lap_number'][driver_number], circuit_length)
-      #t4 = time.time()
-      #print(f"Prediction : {t4-t3}")
-      # data['data'][driver_number] = pd.concat([data['data'][driver_number], merged_data])
-      merged_data.to_sql('telemetry', engine, if_exists = 'append', index = False)
-      #t5 = time.time()
-      #print(f"Write to SQL : {t5-t4}")
-      data['lap_number'][driver_number] = merged_data.iloc[-1].lap_number
+      merged_data['lap_number'] = assign_lap_number(merged_data, data['lap_number'][driver_code], circuit_length)
+      telemetry_data = pd.concat([telemetry_data, merged_data])
+      data['lap_number'][driver_code] = merged_data.iloc[-1].lap_number
     except Exception as e:
       print(f'{driver_number} failed')
       print(f'{e} exception')
 
-    # add distance logic
-    # t3 = time.time()
-    # print(driver_code, t3-t2)
-  # t4 = time.time()
-  # print('all drivers', t4-t1)
-  # print(et, data['lap_number'])
-  print(et, sorted(data['lap_number'].items(), key = lambda kv: starting_grid[kv[0]]))
+  telemetry_data.to_sql('telemetry', engine, if_exists = 'append', index = False)
+  print(et, time.time() - t1, sorted(data['lap_number'].items(), key = lambda kv: starting_grid[driver_config[kv[0]]]))
+  
   # break
 
 
