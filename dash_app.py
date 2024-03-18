@@ -3,7 +3,7 @@ import dash
 from dash import html, dcc, dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
-import dash_table
+from dash import dash_table
 import pandas as pd
 from sqlalchemy import create_engine
 import numpy as np
@@ -12,10 +12,13 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from urllib.request import urlopen
 import json
-from scipy.ndimage.filters import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d
+
+corners = [711.9508171931816, 814.1876569292108, 936.7201493049793, 1506.9841172483643, 1787.9086361225473, 1880.658880160338, 1975.1619299965303, 2232.6789270606096, 2598.3923945375827, 2691.728150228979, 3466.886530179646, 3875.788302688632, 4084.7641184324057, 4889.970687598453, 4970.110027289251]
+
 
 # Connect to your SQL database
-engine = create_engine("sqlite:///9472.db")
+engine = create_engine("sqlite:///../9472.db")
 
 driver_config = {'VER': 1,
   'SAR': 2,
@@ -167,22 +170,38 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
     # time1 = df1['date'] - df1['date'].iloc[0]
     # time2 = df2['date'] - df2['date'].iloc[0]
     
-    speeds = [go.Scatter(x=dist1, y=df1['speed'], mode='lines', name=f'{driver1.upper()}'),
-              go.Scatter(x=dist2, y=df2['speed'], mode='lines', name=f'{driver2.upper()}')]
+    speeds = [go.Scatter(x=dist1, y=df1['speed'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000")),
+              go.Scatter(x=dist2, y=df2['speed'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF")),
+              go.Scatter(x=dist1, y=df1['drs']*5, mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
+              go.Scatter(x=dist2, y=df2['drs']*5, mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
 
-    throttles = [go.Scatter(x=dist1, y=df1['throttle'], mode='lines', name=f'{driver1.upper()} Thr'),
-              go.Scatter(x=dist2, y=df2['throttle'], mode='lines', name=f'{driver2.upper()} Thr'),]
-    brakes = [go.Scatter(x=dist1, y=df1['brake'], mode='lines', name=f'{driver1.upper()} Br'),
-              go.Scatter(x=dist2, y=df2['brake'], mode='lines', name=f'{driver2.upper()} Br')]
+    for corner in corners:
+        speeds.append(go.Scatter(x=[corner,corner], y=[0,320], mode='lines', line=dict(color="#808080"),showlegend=False))
 
-    rpms = [go.Scatter(x=dist1, y=df1['rpm'], mode='lines', name=f'{driver1.upper()}'),
-              go.Scatter(x=dist2, y=df2['rpm'], mode='lines', name=f'{driver2.upper()}')]
+    throttles = [go.Scatter(x=dist1, y=df1['throttle'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
+              go.Scatter(x=dist2, y=df2['throttle'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False),]
+    for corner in corners:
+        throttles.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#808080"),showlegend=False))
 
-    gears = [go.Scatter(x=dist1, y=df1['n_gear'], mode='lines', name=f'{driver1.upper()}'),
-              go.Scatter(x=dist2, y=df2['n_gear'], mode='lines', name=f'{driver2.upper()}')]
+    brakes = [go.Scatter(x=dist1, y=df1['brake'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
+              go.Scatter(x=dist2, y=df2['brake'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
+    for corner in corners:
+        brakes.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#808080"),showlegend=False))
 
-    drss = [go.Scatter(x=dist1, y=df1['drs'], mode='lines', name=f'{driver1.upper()}'),
-              go.Scatter(x=dist2, y=df2['drs'], mode='lines', name=f'{driver2.upper()}')]
+    rpms = [go.Scatter(x=dist1, y=df1['rpm'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
+              go.Scatter(x=dist2, y=df2['rpm'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
+
+    for corner in corners:
+        rpms.append(go.Scatter(x=[corner,corner], y=[0,12000], mode='lines', line=dict(color="#808080"),showlegend=False))
+    
+    gears = [go.Scatter(x=dist1, y=df1['n_gear'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
+              go.Scatter(x=dist2, y=df2['n_gear'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
+
+    for corner in corners:
+        gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#808080"),showlegend=False))
+
+    #drss = [go.Scatter(x=dist1, y=df1['drs'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
+    #         go.Scatter(x=dist2, y=df2['drs'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
 
     fig = make_subplots(rows=6, cols=1, vertical_spacing = 0.01)
     
@@ -196,11 +215,17 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
         fig.add_trace(trace, row=4, col=1)
     for trace in gears:
         fig.add_trace(trace, row=5, col=1)
-    for trace in drss:
-        fig.add_trace(trace, row=6, col=1)
-        
+    #for trace in drss:
+    #    fig.add_trace(trace, row=6, col=1)
+       
+    fig['layout']['yaxis']['title']="Speed"
+    fig['layout']['yaxis2']['title']="Throttle"
+    fig['layout']['yaxis3']['title']="Brake"
+    fig['layout']['yaxis4']['title']="RPM"
+    fig['layout']['yaxis5']['title']="Gear"
     fig.update_layout(height=1000, width=1175, title_text=f'''{driver1.upper()} : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()}: {get_lap_dur(driver2_number,lap2_number)}s''')
-    
+    fig.update_xaxes(showticklabels=False)
+
     return fig
 
 @app.callback(
@@ -210,7 +235,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
 def update_laptime_plot(n_intervals):
     # Replace this with your data update logic
 
-    query = f"SELECT driver_number, lap_number, lap_duration FROM laptimes"
+    query = f"SELECT driver_number, lap_number, lap_duration FROM laptimes WHERE lap_duration<102"
     df = pd.read_sql_query(query, engine).dropna().astype(float)
 
     # df_ = df.pivot(columns = 'lap_number', index = 'driver_number', values = 'lap_duration').round(3)
@@ -221,7 +246,7 @@ def update_laptime_plot(n_intervals):
     for k, v in df.groupby('driver_number'):
       traces.append(go.Scatter(x=v['lap_number'], y=v['lap_duration'], mode='markers+lines', name=f'{driver_config_reverse[int(k)]}'))
     layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
-    figure = go.Figure(data=traces, layout=layout)
+    figure = go.Figure(data=traces, layout=layout, layout_yaxis_range=[92,103])
     return figure
 
 @app.callback(
