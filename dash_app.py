@@ -192,35 +192,35 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
     # time1 = df1['date'] - df1['date'].iloc[0]
     # time2 = df2['date'] - df2['date'].iloc[0]
     
-    speeds = [go.Scatter(x=dist1, y=df1['speed'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000")),
-              go.Scatter(x=dist2, y=df2['speed'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF")),
-              go.Scatter(x=dist1, y=df1['drs']*5, mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
-              go.Scatter(x=dist2, y=df2['drs']*5, mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
+    speeds = [go.Scatter(x=dist1, y=df1['speed'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"), legendgroup='group1'),
+              go.Scatter(x=dist2, y=df2['speed'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"), legendgroup='group2'),
+              go.Scatter(x=dist1, y=df1['drs']*5, mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"), legendgroup='group1', showlegend=False),
+              go.Scatter(x=dist2, y=df2['drs']*5, mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"), legendgroup='group2', showlegend=False)]
 
     for corner in corners:
-        speeds.append(go.Scatter(x=[corner,corner], y=[0,320], mode='lines', line=dict(color="#808080"),showlegend=False))
+        speeds.append(go.Scatter(x=[corner,corner], y=[0,320], mode='lines', line=dict(color="#808080"), showlegend=False))
 
-    throttles = [go.Scatter(x=dist1, y=df1['throttle'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
-              go.Scatter(x=dist2, y=df2['throttle'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False),]
+    throttles = [go.Scatter(x=dist1, y=df1['throttle'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"), legendgroup='group1',showlegend=False),
+              go.Scatter(x=dist2, y=df2['throttle'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"), legendgroup='group2',showlegend=False),]
     for corner in corners:
-        throttles.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#808080"),showlegend=False))
+        throttles.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#808080"), showlegend=False))
 
-    brakes = [go.Scatter(x=dist1, y=df1['brake'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
-              go.Scatter(x=dist2, y=df2['brake'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
+    brakes = [go.Scatter(x=dist1, y=df1['brake'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"), legendgroup='group1',showlegend=False),
+              go.Scatter(x=dist2, y=df2['brake'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"), legendgroup='group2',showlegend=False)]
     for corner in corners:
-        brakes.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#808080"),showlegend=False))
+        brakes.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#808080"), showlegend=False))
 
-    rpms = [go.Scatter(x=dist1, y=df1['rpm'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
-              go.Scatter(x=dist2, y=df2['rpm'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
+    rpms = [go.Scatter(x=dist1, y=df1['rpm'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"), legendgroup='group1',showlegend=False),
+              go.Scatter(x=dist2, y=df2['rpm'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"), legendgroup='group2',showlegend=False)]
 
     for corner in corners:
-        rpms.append(go.Scatter(x=[corner,corner], y=[0,12000], mode='lines', line=dict(color="#808080"),showlegend=False))
+        rpms.append(go.Scatter(x=[corner,corner], y=[0,12000], mode='lines', line=dict(color="#808080"), showlegend=False))
     
-    gears = [go.Scatter(x=dist1, y=df1['n_gear'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
-              go.Scatter(x=dist2, y=df2['n_gear'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
+    gears = [go.Scatter(x=dist1, y=df1['n_gear'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"), legendgroup='group1',showlegend=False),
+              go.Scatter(x=dist2, y=df2['n_gear'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"), legendgroup='group2',showlegend=False)]
 
     for corner in corners:
-        gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#808080"),showlegend=False))
+        gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#808080"), showlegend=False))
 
     #drss = [go.Scatter(x=dist1, y=df1['drs'], mode='lines', name=f'{driver1.upper()}', line=dict(color="#FF0000"),showlegend=False),
     #         go.Scatter(x=dist2, y=df2['drs'], mode='lines', name=f'{driver2.upper()}', line=dict(color="#0000FF"),showlegend=False)]
