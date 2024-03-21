@@ -15,3 +15,4 @@ Core logic \
   - [ ] Optimize start line detection /
   - [ ] add live time delta \
   - [ ] fetch live position from API \
+  - [ ] Add config files for corners, circuit length and start lines
