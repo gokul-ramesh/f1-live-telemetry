@@ -13,13 +13,34 @@ from plotly.subplots import make_subplots
 from urllib.request import urlopen
 import json
 from scipy.ndimage import gaussian_filter1d
+import requests
 
-corners = [711.9508171931816, 814.1876569292108, 936.7201493049793, 1506.9841172483643, 1787.9086361225473, 1880.658880160338, 1975.1619299965303, 2232.6789270606096, 2598.3923945375827, 2691.728150228979, 3466.886530179646, 3875.788302688632, 4084.7641184324057, 4889.970687598453, 4970.110027289251]
+# Bahrain corners = [711.9508171931816, 814.1876569292108, 936.7201493049793, 1506.9841172483643, 1787.9086361225473, 1880.658880160338, 1975.1619299965303, 2232.6789270606096, 2598.3923945375827, 2691.728150228979, 3466.886530179646, 3875.788302688632, 4084.7641184324057, 4889.970687598453, 4970.110027289251]
+corners = [ 354.42083043,  439.27690256, 1080.70076863, 1232.24836987,
+       1432.90920875, 1851.34924493, 1950.29260385, 2152.99296282,
+       3258.34533469, 3367.69508844, 4078.44514627, 4341.73730817,
+       4580.99734427, 4742.19833527] #Australia
+
+def get_data(url):
+  return pd.DataFrame(requests.get(url).json())
+
+def get_session(country, year):
+  return get_data(f"https://api.openf1.org/v1/sessions?country_name={country}&year={year}")
+
+
+#Session and circuit information
+country = "Australia"
+year = 2023
+
+session = get_session(country, year)
+session_key = session.session_key.iloc[-1]
 
 
 # Connect to your SQL database
-engine = create_engine("sqlite:///../9472.db")
+engine = create_engine(f"sqlite:///{session_key}.db")
 
+driver_config = {row['name_acronym']:row['driver_number'] for ind, row in get_data(f'https://api.openf1.org/v1/drivers?session_key={session_key-4}').iterrows()}
+'''
 driver_config = {'VER': 1,
   'SAR': 2,
   'RIC': 3,
@@ -40,11 +61,12 @@ driver_config = {'VER': 1,
   'RUS': 63,
   'BOT': 77,
   'PIA': 81}
-  
+'''
+
 driver_config_reverse = {v: k for k, v in driver_config.items()}
 
 def get_lap_dur(driv,lap):
-  response = urlopen(f'https://api.openf1.org/v1/laps?session_key=9472&driver_number={driv}&lap_number={lap}')
+  response = urlopen(f'https://api.openf1.org/v1/laps?session_key={session_key}&driver_number={driv}&lap_number={lap}')
   return json.loads(response.read().decode('utf-8'))[0]["lap_duration"]
 
 columns = ['driver_code'] 
@@ -67,7 +89,7 @@ lap2_buttons = html.Div([dbc.Button(f'{lap_number}', id=f"l-btn2-{lap_number}", 
 
 # Define the layout of your app
 app.layout = html.Div([
-    html.H1("Laptime Comparison for session 9472"),
+    html.H1(f"Laptime Comparison for Race {country}, {year}"),
 
     dbc.Row(
             [
