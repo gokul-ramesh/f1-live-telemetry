@@ -193,41 +193,44 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
     dist1 = gaussian_filter1d(df1.actual_distance, sigma = 10)
     dist2 = gaussian_filter1d(df2.actual_distance, sigma = 10)
 
+    line_driver2 = dict(color=f"#{driver_color[driver2.upper()]}")
+    if driver_color[driver1.upper()] == driver_color[driver2.upper()]:
+        line_driver2['dash'] = "dot"
     # time1 = df1['date'] - df1['date'].iloc[0]
     # time2 = df2['date'] - df2['date'].iloc[0]
     
     speeds = [go.Scatter(x=dist1, y=df1['speed'], mode='lines', name=f'{driver1.upper()}, Lap{lap1_number}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1'),
-              go.Scatter(x=dist2, y=df2['speed'], mode='lines', name=f'{driver2.upper()}, Lap{lap1_number}', line=dict(color=f"#{driver_color[driver2.upper()]}"), legendgroup='group2'),
+              go.Scatter(x=dist2, y=df2['speed'], mode='lines', name=f'{driver2.upper()}, Lap{lap1_number}', line=line_driver2, legendgroup='group2'),
               go.Scatter(x=dist1, y=df1['drs']*5, mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1', showlegend=False),
-              go.Scatter(x=dist2, y=df2['drs']*5, mode='lines', name=f'{driver2.upper()}', line=dict(color=f"#{driver_color[driver2.upper()]}"), legendgroup='group2', showlegend=False)]
+              go.Scatter(x=dist2, y=df2['drs']*5, mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2', showlegend=False)]
 
     for corner in corners:
         speeds.append(go.Scatter(x=[corner,corner], y=[0,320], mode='lines', line=dict(color="#808080", dash="dot"), showlegend=False))
 
     throttles = [go.Scatter(x=dist1, y=df1['throttle'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1',showlegend=False),
-              go.Scatter(x=dist2, y=df2['throttle'], mode='lines', name=f'{driver2.upper()}', line=dict(color=f"#{driver_color[driver2.upper()]}"), legendgroup='group2',showlegend=False),]
+              go.Scatter(x=dist2, y=df2['throttle'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2',showlegend=False),]
     for corner in corners:
         throttles.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#808080", dash="dot"), showlegend=False))
 
     brakes = [go.Scatter(x=dist1, y=df1['brake'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1',showlegend=False),
-              go.Scatter(x=dist2, y=df2['brake'], mode='lines', name=f'{driver2.upper()}', line=dict(color=f"#{driver_color[driver2.upper()]}"), legendgroup='group2',showlegend=False)]
+              go.Scatter(x=dist2, y=df2['brake'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2',showlegend=False)]
     for corner in corners:
         brakes.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#808080", dash="dot"), showlegend=False))
 
     rpms = [go.Scatter(x=dist1, y=df1['rpm'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1',showlegend=False),
-              go.Scatter(x=dist2, y=df2['rpm'], mode='lines', name=f'{driver2.upper()}', line=dict(color=f"#{driver_color[driver2.upper()]}"), legendgroup='group2',showlegend=False)]
+              go.Scatter(x=dist2, y=df2['rpm'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2',showlegend=False)]
 
     for corner in corners:
         rpms.append(go.Scatter(x=[corner,corner], y=[0,12000], mode='lines', line=dict(color="#808080", dash="dot"), showlegend=False))
     
     gears = [go.Scatter(x=dist1, y=df1['n_gear'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1',showlegend=False),
-              go.Scatter(x=dist2, y=df2['n_gear'], mode='lines', name=f'{driver2.upper()}', line=dict(color=f"#{driver_color[driver2.upper()]}"), legendgroup='group2',showlegend=False)]
+              go.Scatter(x=dist2, y=df2['n_gear'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2',showlegend=False)]
 
     for corner in corners:
         gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#808080", dash="dot"), showlegend=False))
 
     #drss = [go.Scatter(x=dist1, y=df1['drs'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"),showlegend=False),
-    #         go.Scatter(x=dist2, y=df2['drs'], mode='lines', name=f'{driver2.upper()}', line=dict(color=f"#{driver_color[driver2.upper()]}"),showlegend=False)]
+    #         go.Scatter(x=dist2, y=df2['drs'], mode='lines', name=f'{driver2.upper()}', line=line_driver2,showlegend=False)]
 
     fig = make_subplots(rows=6, cols=1, vertical_spacing = 0.01)
     
@@ -249,7 +252,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
     fig['layout']['yaxis3']['title']="Brake"
     fig['layout']['yaxis4']['title']="RPM"
     fig['layout']['yaxis5']['title']="Gear"
-    fig.update_layout(uirevision=False,height=1000, width=1175, title_text=f'''{driver1.upper()} : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()}: {get_lap_dur(driver2_number,lap2_number)}s''')
+    fig.update_layout(uirevision=8,height=1000, width=1175, title_text=f'''{driver1.upper()} : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()}: {get_lap_dur(driver2_number,lap2_number)}s''')
     fig.update_xaxes(showticklabels=False)
 
     return fig
