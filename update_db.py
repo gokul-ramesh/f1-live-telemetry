@@ -6,6 +6,7 @@ from scipy.stats import linregress as fit
 
 import time
 import pickle
+import os
 
 from datetime import timedelta, datetime
 from sklearn.neighbors import KNeighborsRegressor
@@ -86,6 +87,16 @@ def get_weather_data(session_key, start_time, end_time):
   else:
     return pd.DataFrame()
 
+def get_position_data(session_key, end_time):
+  url = f'''https://api.openf1.org/v1/position?session_key={session_key}&date<={end_time}'''
+  position = get_data(url)
+  position = position[['driver_number', 'date', 'position']].groupby('driver_number').agg('last').reset_index()
+  if len(position):
+    # weather['date'] = pd.to_datetime(weather['date'], format='ISO8601')
+    return position
+  else:
+    return pd.DataFrame()
+
 
 def get_laptimes_data(session_key, start_time, end_time):
   url = f'''https://api.openf1.org/v1/laps?&session_key={session_key}&date_start<{end_time}&date_start>={start_time}'''
@@ -130,91 +141,97 @@ def compute_l2(car_location, start_line, before_start_line, after_start_line):
 
 # make knn
 
-url = f'''https://api.openf1.org/v1/laps?session_key={session_key_FP1}'''
-lap_data = get_data(url)
-lap_data = lap_data[lap_data.lap_duration.notna()]
-# display(lap_data)
-lap_data['date_start'] = pd.to_datetime(lap_data['date_start'],format="mixed")
-lap_data['date_end'] = lap_data.apply(lambda x: x.date_start + timedelta(seconds = x.lap_duration), axis = 1)
-
-url = f'''https://api.openf1.org/v1/laps?session_key={session_key_FP2}'''
-lap_data2 = get_data(url)
-lap_data2 = lap_data2[lap_data2.lap_duration.notna()]
-# display(lap_data)
-lap_data2['date_start'] = pd.to_datetime(lap_data2['date_start'], format='mixed')
-lap_data2['date_end'] = lap_data2.apply(lambda x: x.date_start + timedelta(seconds = x.lap_duration), axis = 1)
-lap_data = pd.concat([lap_data, lap_data2])
-top_laps = lap_data.sort_values(by='lap_duration').iloc[:50, :]
-
-
-ref_lap_distances = pd.DataFrame()
-num_laps = 0
-start_line_dp = pd.DataFrame()
-
-print("Building model...")
-for _, lap in lap_data.sort_values(by = 'lap_duration').iterrows():
-
-    print(f"{num_laps*4}% complete ...")
-    if num_laps > 25:
-        break
-
-    driver_number = lap.driver_number
-    start_time = lap.date_start
-    end_time = lap.date_end
-    session_key = lap.session_key
-    lap_duration = (end_time - start_time).total_seconds()
-
-    if lap_duration > 98:
-        continue
-    num_laps +=1
-    # print(num_laps, lap_duration, driver_number, start_time)
-
-    url = f'''https://api.openf1.org/v1/car_data?driver_number={driver_number}&session_key={session_key}&date<{end_time}&date>={start_time}'''
-    car_data = get_data(url)
-    url = f'''https://api.openf1.org/v1/location?driver_number={driver_number}&session_key={session_key}&date<{end_time}&date>={start_time}'''
-    location_data = get_data(url)
-
-    merged = pd.merge(car_data, location_data, how = 'outer', on = ['date', 'meeting_key', 'session_key', 'driver_number']).sort_values(by = 'date')
-    merged['date'] = pd.to_datetime(merged['date'])
-    merged.set_index('date', inplace = True)
-    merged[['n_gear', 'drs']] = merged[['n_gear', 'drs']].ffill().ffill().bfill()
-    merged[['rpm', 'speed', 'throttle', 'brake']] = merged[['rpm', 'speed', 'throttle', 'brake']].interpolate(method = 'polynomial', order = 1, limit_direction = 'both')
-    merged[['x', 'y', 'z']] = merged[['x', 'y', 'z']].interpolate(method = 'polynomial', order = 2, limit_direction = 'both')
-    merged.reset_index(inplace = True)
-    compute_distance(merged, start_time)
-    ref_lap_distances = pd.concat([ref_lap_distances, merged[['x','y','distance', 'driver_number']]])
-    start_line_dp=pd.concat([start_line_dp,merged.iloc[[1,2,3,4,5,-1,-2,-3,-4,-5],:]])
-
-ref_lap_distances.dropna(inplace = True)
-
-knn =  KNeighborsRegressor(n_neighbors = 15, weights = 'distance')
-knn.fit(np.asarray(ref_lap_distances[['x', 'y']]), np.asarray(ref_lap_distances[['distance']]))
-
-#Find starting line
-start_line_dp.dropna(inplace=True)
-start_line = fit(start_line_dp.x, start_line_dp.y)
-start_line_dp['distance'] = np.where(start_line_dp['distance']>5000, start_line_dp['distance']-circuit_length, start_line_dp['distance'])
-start_lines = pd.DataFrame(columns=['x','y'])
-start_line_dp.drop(start_line_dp[(start_line_dp['x']==0) & (start_line_dp['y']==0)].index, inplace=True)
-#for ind, row in start_line_dp.iterrows():
-#    start_lines.loc[ind] = [row.x + row.distance/(1+start_line.slope)**0.5, row.y + (row.distance * start_line.slope)/(1+start_line.slope)**0.5]
-start_line_dp["start_coords_x"] = start_line_dp.x + start_line_dp['distance']/(1+start_line.slope)**0.5
-start_line_dp["start_coords_y"] = start_line_dp.y + start_line.slope * start_line_dp['distance']/(1+start_line.slope)**0.5
-
-start_line = (start_line_dp['start_coords_x'].mean(), start_line_dp['start_coords_y'].mean())
-'''
-ref_lap_distances['mse'] = 0
-for index, row in ref_lap_distances.iterrows():
-  ref_lap_distances.loc[index, "mse"] = mean_squared_error( ref_lap_distances[['x','y']], np.repeat([[row.x, row.y]], len(ref_lap_distances), 0))
-
-start_line = (ref_lap_distances.iloc[ref_lap_distances.mse.argmin()].x, ref_lap_distances.iloc[ref_lap_distances.mse.argmin()].y)
-'''
-print("Saving model...")
 pkl_filename = f"knn_{country}-{year}_FP1_FP2_top25.pkl"
-with open(pkl_filename, 'wb') as file:
-    pickle.dump([knn, start_line, before_start_line, after_start_line], file)
+print(pkl_filename)
 
-pkl_filename = f"knn_{country}-{year}_FP1_FP2_top25.pkl"
+if os.path.exists(pkl_filename) == False:
+
+  url = f'''https://api.openf1.org/v1/laps?session_key={session_key_FP1}'''
+  lap_data = get_data(url)
+  lap_data = lap_data[lap_data.lap_duration.notna()]
+  # display(lap_data)
+  lap_data['date_start'] = pd.to_datetime(lap_data['date_start'],format="mixed")
+  lap_data['date_end'] = lap_data.apply(lambda x: x.date_start + timedelta(seconds = x.lap_duration), axis = 1)
+  
+  url = f'''https://api.openf1.org/v1/laps?session_key={session_key_FP2}'''
+  lap_data2 = get_data(url)
+  lap_data2 = lap_data2[lap_data2.lap_duration.notna()]
+  # display(lap_data)
+  lap_data2['date_start'] = pd.to_datetime(lap_data2['date_start'], format='mixed')
+  lap_data2['date_end'] = lap_data2.apply(lambda x: x.date_start + timedelta(seconds = x.lap_duration), axis = 1)
+  lap_data = pd.concat([lap_data, lap_data2])
+  top_laps = lap_data.sort_values(by='lap_duration').iloc[:50, :]
+  
+  
+  ref_lap_distances = pd.DataFrame()
+  num_laps = 0
+  start_line_dp = pd.DataFrame()
+  
+  
+  
+  print("Building model...")
+  for _, lap in lap_data.sort_values(by = 'lap_duration').iterrows():
+  
+      print(f"{num_laps*4}% complete ...")
+      if num_laps > 25:
+          break
+  
+      driver_number = lap.driver_number
+      start_time = lap.date_start
+      end_time = lap.date_end
+      session_key = lap.session_key
+      lap_duration = (end_time - start_time).total_seconds()
+  
+      if lap_duration > 98:
+          continue
+      num_laps +=1
+      # print(num_laps, lap_duration, driver_number, start_time)
+  
+      url = f'''https://api.openf1.org/v1/car_data?driver_number={driver_number}&session_key={session_key}&date<{end_time}&date>={start_time}'''
+      car_data = get_data(url)
+      url = f'''https://api.openf1.org/v1/location?driver_number={driver_number}&session_key={session_key}&date<{end_time}&date>={start_time}'''
+      location_data = get_data(url)
+  
+      merged = pd.merge(car_data, location_data, how = 'outer', on = ['date', 'meeting_key', 'session_key', 'driver_number']).sort_values(by = 'date')
+      merged['date'] = pd.to_datetime(merged['date'])
+      merged.set_index('date', inplace = True)
+      merged[['n_gear', 'drs']] = merged[['n_gear', 'drs']].ffill().ffill().bfill()
+      merged[['rpm', 'speed', 'throttle', 'brake']] = merged[['rpm', 'speed', 'throttle', 'brake']].interpolate(method = 'polynomial', order = 1, limit_direction = 'both')
+      merged[['x', 'y', 'z']] = merged[['x', 'y', 'z']].interpolate(method = 'polynomial', order = 2, limit_direction = 'both')
+      merged.reset_index(inplace = True)
+      compute_distance(merged, start_time)
+      ref_lap_distances = pd.concat([ref_lap_distances, merged[['x','y','distance', 'driver_number']]])
+      start_line_dp=pd.concat([start_line_dp,merged.iloc[[1,2,3,4,5,-1,-2,-3,-4,-5],:]])
+  
+  ref_lap_distances.dropna(inplace = True)
+  
+  knn =  KNeighborsRegressor(n_neighbors = 15, weights = 'distance')
+  knn.fit(np.asarray(ref_lap_distances[['x', 'y']]), np.asarray(ref_lap_distances[['distance']]))
+  
+  #Find starting line
+  start_line_dp.dropna(inplace=True)
+  start_line = fit(start_line_dp.x, start_line_dp.y)
+  start_line_dp['distance'] = np.where(start_line_dp['distance']>5000, start_line_dp['distance']-circuit_length, start_line_dp['distance'])
+  start_lines = pd.DataFrame(columns=['x','y'])
+  start_line_dp.drop(start_line_dp[(start_line_dp['x']==0) & (start_line_dp['y']==0)].index, inplace=True)
+  #for ind, row in start_line_dp.iterrows():
+  #    start_lines.loc[ind] = [row.x + row.distance/(1+start_line.slope)**0.5, row.y + (row.distance * start_line.slope)/(1+start_line.slope)**0.5]
+  start_line_dp["start_coords_x"] = start_line_dp.x + start_line_dp['distance']/(1+start_line.slope)**0.5
+  start_line_dp["start_coords_y"] = start_line_dp.y + start_line.slope * start_line_dp['distance']/(1+start_line.slope)**0.5
+  
+  start_line = (start_line_dp['start_coords_x'].mean(), start_line_dp['start_coords_y'].mean())
+  '''
+  ref_lap_distances['mse'] = 0
+  for index, row in ref_lap_distances.iterrows():
+    ref_lap_distances.loc[index, "mse"] = mean_squared_error( ref_lap_distances[['x','y']], np.repeat([[row.x, row.y]], len(ref_lap_distances), 0))
+  
+  start_line = (ref_lap_distances.iloc[ref_lap_distances.mse.argmin()].x, ref_lap_distances.iloc[ref_lap_distances.mse.argmin()].y)
+  '''
+  print("Saving model...")
+  
+  with open(pkl_filename, 'wb') as file:
+      pickle.dump([knn, start_line, before_start_line, after_start_line], file)
+
 with open(pkl_filename, 'rb') as file:
     knn, start_line, before_start_line, after_start_line = pickle.load(file)
 
@@ -231,7 +248,7 @@ after_start_line = (-330, 2433)
 
 thresh = 100
 
-interval = 300
+interval = 60
 
 data = {}
 data['data'] = {}
@@ -249,10 +266,13 @@ for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):
   # try:
   weather_data = get_weather_data(session_key, st, et)
   laptimes_data = get_laptimes_data(session_key, st, et)
+  position_data = get_position_data(session_key, et)
   if len(weather_data):
     weather_data.map(str).to_sql('weather', engine, if_exists = 'append', index = False)
   if len(laptimes_data):
     laptimes_data.map(str).to_sql('laptimes', engine, if_exists = 'append', index = False)
+  if len(position_data):
+    position_data.map(str).to_sql('position', engine, if_exists = 'replace', index = False)
   # except Exception as e:
   #   print(f'{driver_number} failed')
   #   print(f'{e} exception')
