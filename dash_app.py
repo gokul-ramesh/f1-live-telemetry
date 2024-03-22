@@ -342,9 +342,6 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
     for corner in corners:
         gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
 
-    #drss = [go.Scatter(x=dist1, y=df1['drs'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"),showlegend=False),
-    #         go.Scatter(x=dist2, y=df2['drs'], mode='lines', name=f'{driver2.upper()}', line=line_driver2,showlegend=False)]
-
     fig = make_subplots(rows=6, cols=1, vertical_spacing = 0.01)
     
     for trace in speeds:
@@ -360,7 +357,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
     #for trace in drss:
     #    fig.add_trace(trace, row=6, col=1)
        
-    fig['layout']['yaxis']['title']="Speed"
+    fig['layout']['yaxis']['title']="Speed/DRS"
     fig['layout']['yaxis2']['title']="Throttle"
     fig['layout']['yaxis3']['title']="Brake"
     fig['layout']['yaxis4']['title']="RPM"
@@ -493,7 +490,10 @@ def update_track_location_plot(n_intervals):
     query = f"SELECT x, y, driver_number, date FROM telemetry where date = (select max(date) from telemetry) group by driver_number"
     df = pd.read_sql_query(query, engine)
 
+    
+    df_layout = pd.read_csv(f'track_layout/{country}-{year}.csv')
     traces = []
+    traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040'), hoverinfo='skip', showlegend=False))
     for k, v in df.groupby('driver_number'):
       traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', name=f'{driver_config_reverse[int(k)]}'))
     layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[-15000,15000], xaxis_range=[-15000,15000])
@@ -520,9 +520,8 @@ def update_weather_plot(n_intervals):
     for col in cols:
         # df[col] = df[col].astype(float)
         traces.append(go.Scatter(x=df['date'], y=df[col], mode='lines', name=f'{col}'))
-    layout = go.Layout(title = f'''Weather Data''', xaxis=dict(title='Time'), yaxis=dict(title='Value'))
+    layout = go.Layout(title = f'''Weather Data''', xaxis=dict(title='Time'), yaxis=dict(title='Value'), uirevision=8)
     figure = go.Figure(data=traces, layout=layout)
-
     return figure
 
 # Run the app

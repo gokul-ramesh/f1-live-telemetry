@@ -26,17 +26,12 @@ session = get_session(country, year)
 session_key = session.session_key.iloc[-1]
 session_key_FP1 = session.session_key.iloc[0]
 session_key_FP2 = session.session_key.iloc[1]
-start_time = datetime.strftime(datetime.strptime(session.date_start.iloc[-1],"%Y-%m-%dT%H:%M:%S") + timedelta(seconds = 30), "%Y-%m-%dT%H:%M:%S.%f")
-print(f"Event starts at {start_time}")
-end_time = session.date_end.iloc[-1]
+ses_start_time = pd.to_datetime(session.date_start.iloc[-1])
+print(f"Event starts at {ses_start_time}")
+ses_end_time = pd.to_datetime(session.date_end.iloc[-1])+timedelta(minutes=40)
 circuit_length = 5200
 before_start_line = (-800, -1700) #Australia
 after_start_line = (-1200, -1300)#Australia
-
-
-# Connect to your SQL database
-print(f"Connecting to db using {session_key}.db")
-engine = create_engine(f"sqlite:///{session_key}.db")
 
 driver_config = {row['name_acronym']:row['driver_number'] for ind, row in get_data(f'https://api.openf1.org/v1/drivers?session_key={session_key_FP1+3}').iterrows()}
 '''
@@ -139,10 +134,12 @@ def compute_l2(car_location, start_line, before_start_line, after_start_line):
   s = (track_car_vector[0]**2 + track_car_vector[1]**2)**0.5
   return np.sign(np.dot(track_dir_vector, track_car_vector)) * s
 
-# make knn
-
 pkl_filename = f"knn_{country}-{year}_FP1_FP2_top25.pkl"
 print(pkl_filename)
+
+
+# make knn
+
 
 if os.path.exists(pkl_filename) == False:
 
@@ -172,10 +169,10 @@ if os.path.exists(pkl_filename) == False:
   print("Building model...")
   for _, lap in lap_data.sort_values(by = 'lap_duration').iterrows():
   
-      print(f"{num_laps*4}% complete ...")
+
       if num_laps > 25:
           break
-  
+      print(f"{num_laps * 4}% complete ...")
       driver_number = lap.driver_number
       start_time = lap.date_start
       end_time = lap.date_end
@@ -201,10 +198,14 @@ if os.path.exists(pkl_filename) == False:
       merged.reset_index(inplace = True)
       compute_distance(merged, start_time)
       ref_lap_distances = pd.concat([ref_lap_distances, merged[['x','y','distance', 'driver_number']]])
-      start_line_dp=pd.concat([start_line_dp,merged.iloc[[1,2,3,4,5,-1,-2,-3,-4,-5],:]])
+      start_line_dp=pd.concat([start_line_dp,merged.iloc[[1,2,3,4,5,6,7,8,9,10,0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10],:]])
   
   ref_lap_distances.dropna(inplace = True)
   
+  if not os.path.exists(f"track_layout/{country}-{year}.csv"):
+    ref_lap_distances[['x','y']].to_csv(f'track_layout/{country}-{year}.csv', index=True)
+    print(f"Saving track layout...")
+
   knn =  KNeighborsRegressor(n_neighbors = 15, weights = 'distance')
   knn.fit(np.asarray(ref_lap_distances[['x', 'y']]), np.asarray(ref_lap_distances[['distance']]))
   
@@ -214,41 +215,35 @@ if os.path.exists(pkl_filename) == False:
   start_line_dp['distance'] = np.where(start_line_dp['distance']>5000, start_line_dp['distance']-circuit_length, start_line_dp['distance'])
   start_lines = pd.DataFrame(columns=['x','y'])
   start_line_dp.drop(start_line_dp[(start_line_dp['x']==0) & (start_line_dp['y']==0)].index, inplace=True)
-  #for ind, row in start_line_dp.iterrows():
-  #    start_lines.loc[ind] = [row.x + row.distance/(1+start_line.slope)**0.5, row.y + (row.distance * start_line.slope)/(1+start_line.slope)**0.5]
   start_line_dp["start_coords_x"] = start_line_dp.x + start_line_dp['distance']/(1+start_line.slope)**0.5
   start_line_dp["start_coords_y"] = start_line_dp.y + start_line.slope * start_line_dp['distance']/(1+start_line.slope)**0.5
   
   start_line = (start_line_dp['start_coords_x'].mean(), start_line_dp['start_coords_y'].mean())
-  '''
-  ref_lap_distances['mse'] = 0
-  for index, row in ref_lap_distances.iterrows():
-    ref_lap_distances.loc[index, "mse"] = mean_squared_error( ref_lap_distances[['x','y']], np.repeat([[row.x, row.y]], len(ref_lap_distances), 0))
-  
-  start_line = (ref_lap_distances.iloc[ref_lap_distances.mse.argmin()].x, ref_lap_distances.iloc[ref_lap_distances.mse.argmin()].y)
-  '''
   print("Saving model...")
-  
+
   with open(pkl_filename, 'wb') as file:
       pickle.dump([knn, start_line, before_start_line, after_start_line], file)
 
 with open(pkl_filename, 'rb') as file:
     knn, start_line, before_start_line, after_start_line = pickle.load(file)
 
-grid = get_data(f'https://api.openf1.org/v1/position?session_key={session_key}&date<={start_time}')
+grid = get_data(f'https://api.openf1.org/v1/position?session_key={session_key}&date<={ses_start_time}')
 # grid[['driver_number', 'position']].to_dict('index')
 starting_grid = pd.Series(grid["position"].values,index=grid.driver_number).to_dict()
 #starting_grid
 
-''' Loaded from pickle
-start_line = (-371.4, 1462.6)
-before_start_line = (-400, 873)
-after_start_line = (-330, 2433)
-'''
+# Connect to your SQL database
+db_file = f"{session_key}.db"
+if os.path.isfile(db_file):
+    os.remove(db_file)
+    print(f"Removing older DB file {db_file}")
+print(f"Connecting to db using {db_file}")
+engine = create_engine(f"sqlite:///{db_file}")
+
 
 thresh = 100
 
-interval = 60
+interval = 300
 
 data = {}
 data['data'] = {}
@@ -257,11 +252,17 @@ for driver_code, driver_number in driver_config.items():
   data['data'][driver_number] = pd.DataFrame()
   data['lap_number'][driver_code] = 0
 
-for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):
-  
+#for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):
+st = ses_start_time + timedelta(seconds=30)
+
+while True:
+  et = st + timedelta(seconds=interval)
+  print(st,et)
+  if et>ses_end_time:
+    break
+
   t1 = time.time()
-  st = timestamp
-  et = timestamp + timedelta(seconds = interval)
+  
 
   # try:
   weather_data = get_weather_data(session_key, st, et)
@@ -305,7 +306,7 @@ for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):
 
   telemetry_data.to_sql('telemetry', engine, if_exists = 'append', index = False)
   print(et, time.time() - t1, sorted(data['lap_number'].items(), key = lambda kv: starting_grid[driver_config[kv[0]]]))
-  
+  st = max(pd.to_datetime(car_data["date"].iloc[-1]), pd.to_datetime(location_data["date"].iloc[-1]))
   # break
 
 
