@@ -39,6 +39,7 @@ session_key = session.session_key.iloc[-1]
 
 # Connect to your SQL database
 engine = create_engine(f"sqlite:///{session_key}.db")
+print(f"Loading from {session_key}.db")
 
 driver_color={}
 driver_config={}

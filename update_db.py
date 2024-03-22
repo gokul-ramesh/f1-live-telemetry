@@ -122,8 +122,9 @@ def get_best_distance(l2, regr, thresh, circuit_length):
   else:
     return regr
 
-def assign_lap_number(data, current_lap, circuit_length):
-  return np.where(-data['actual_distance'].diff() > 0.90 * circuit_length, 1, 0).cumsum() + current_lap
+def assign_lap_number(data, current_lap, circuit_length, latest_dist):
+  trans_dist = data.iloc[0].actual_distance - latest_dist
+  return np.where(-data['actual_distance'].diff().fillna(trans_dist) > 0.90 * circuit_length, 1, 0).cumsum() + current_lap
 
 def compute_l2(car_location, start_line, before_start_line, after_start_line):
 
@@ -250,7 +251,7 @@ data['data'] = {}
 data['lap_number'] = {}
 for driver_code, driver_number in driver_config.items():
   data['data'][driver_number] = pd.DataFrame()
-  data['lap_number'][driver_code] = 0
+  data['lap_number'][driver_code] = [0, 0]
 
 #for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):
 st = ses_start_time + timedelta(seconds=30)
@@ -297,9 +298,10 @@ while True:
         else:
           continuity_counter = 0
       merged_data.reset_index(inplace=True,drop=True)
-      merged_data['lap_number'] = assign_lap_number(merged_data, data['lap_number'][driver_code], circuit_length)
+      merged_data['lap_number'] = assign_lap_number(merged_data, data['lap_number'][driver_code][0], circuit_length, data['lap_number'][driver_code][1])
       telemetry_data = pd.concat([telemetry_data, merged_data])
-      data['lap_number'][driver_code] = merged_data.iloc[-1].lap_number
+      data['lap_number'][driver_code][0] = merged_data.iloc[-1].lap_number
+      data['lap_number'][driver_code][1] = merged_data.iloc[-1].actual_distance
     except Exception as e:
       print(f'{driver_number} failed')
       print(f'{e} exception')
