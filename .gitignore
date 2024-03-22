@@ -3,3 +3,9 @@
 
 #ignore pickle files
 *.pkl
+
+#ignore pycache
+__pycache__*
+
+#notes/tracker
+.info
