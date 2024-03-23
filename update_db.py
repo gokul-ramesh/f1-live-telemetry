@@ -1,3 +1,5 @@
+import sys
+
 import requests
 import pandas as pd
 from sqlalchemy import create_engine, MetaData, delete
@@ -12,15 +14,29 @@ from datetime import timedelta, datetime
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import mean_squared_error
 
+global no_retries
+no_retries = 0
 def get_data(url):
-  return pd.DataFrame(requests.get(url).json())
+  try:
+    df = pd.DataFrame(requests.get(url).json())
+    no_retries = 0
+    return df
+  except Exception:
+      if no_retries < 5:
+          print(f"{Exception}, Retrying after 1 second...")
+          time.sleep(2)
+          get_data(url)
+          no_retries += 1
+      else:
+          print("Data extraction failed")
+          sys.exit()
 
 def get_session(country, year):
   return get_data(f"https://api.openf1.org/v1/sessions?country_name={country}&year={year}")
 
 #Session and circuit information
 country = "Australia"
-year = 2023
+year = 2024
 print(f"Getting {country} GP {year}")
 session = get_session(country, year)
 session_key = session.session_key.iloc[-1]
@@ -229,9 +245,8 @@ with open(pkl_filename, 'rb') as file:
     knn, start_line, before_start_line, after_start_line = pickle.load(file)
 
 grid = get_data(f'https://api.openf1.org/v1/position?session_key={session_key}&date<={ses_start_time}')
-# grid[['driver_number', 'position']].to_dict('index')
 starting_grid = pd.Series(grid["position"].values,index=grid.driver_number).to_dict()
-#starting_grid
+
 
 # Connect to your SQL database
 db_file = f"{session_key}.db"
@@ -252,7 +267,7 @@ for driver_code, driver_number in driver_config.items():
   latest_distance[driver_code] = np.nan
 
 st = ses_start_time + timedelta(seconds=30)
-st = pd.to_datetime("2023-04-02T06:35:51.492000")
+
 while True:
   et = st + timedelta(seconds=interval)
   print(st,et)
