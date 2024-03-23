@@ -30,7 +30,7 @@ def get_session(country, year):
 
 #Session and circuit information
 country = "Australia"
-year = 2023
+year = 2024
 TOTAL_LAPS = 75
 
 session = get_session(country, year)
@@ -46,6 +46,8 @@ driver_config={}
 for ind, driver in get_data(f'https://api.openf1.org/v1/drivers?session_key={session_key}').iterrows():
     driver_config[driver['name_acronym']] = driver['driver_number']
     driver_color[driver['name_acronym']]= driver['team_colour']
+driver_color['ZHO'] = 'CFDBD1'
+driver_color['BOT'] = 'CFDBD1'
 '''
 driver_config = {'VER': 1,
   'SAR': 2,
@@ -383,9 +385,14 @@ def update_laptime_plot(n_intervals, laptime_threshold):
     # df_.columns = [int(x) for x in df_.columns]
     # df_ = df_[sorted(df_.columns.tolist())].reset_index()
 
+    lines = {}
+    for name, color in driver_color.items():
+      lines[driver_config[name]] = dict(color=f"#{color}")
+      if driver_config[name] in [11, 18, 22, 23, 27, 31, 55, 63, 77, 81]:
+          lines[driver_config[name]]['dash'] = 'dot'
     traces = []
     for k, v in df.groupby('driver_number'):
-      traces.append(go.Scatter(x=v['lap_number'], y=v['lap_duration'], mode='markers+lines', name=f'{driver_config_reverse[int(k)]}'))
+      traces.append(go.Scatter(x=v['lap_number'], y=v['lap_duration'], mode='markers+lines', name=f'{driver_config_reverse[int(k)]}', line=lines[int(k)]))
     layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     # figure = go.Figure(data=traces, layout=layout, layout_yaxis_range=[92,103])
     figure = go.Figure(data=traces, layout=layout)
@@ -496,7 +503,7 @@ def update_track_location_plot(n_intervals):
     traces = []
     traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040'), hoverinfo='skip', showlegend=False))
     for k, v in df.groupby('driver_number'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', name=f'{driver_config_reverse[int(k)]}'))
+      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', name=f'{driver_config_reverse[int(k)]}', line=dict(color=f'#{driver_color[driver_config_reverse[int(k)]]}')))
     layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[-15000,15000], xaxis_range=[-15000,15000])
     figure = go.Figure(data=traces, layout=layout)
     return figure
