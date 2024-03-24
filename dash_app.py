@@ -15,6 +15,7 @@ import json
 from scipy.ndimage import gaussian_filter1d
 import requests
 import utils
+import sys
 
 # Bahrain 
 # corners = [711.9508171931816, 814.1876569292108, 936.7201493049793, 1506.9841172483643, 1787.9086361225473, 1880.658880160338, 1975.1619299965303, 2232.6789270606096, 2598.3923945375827, 2691.728150228979, 3466.886530179646, 3875.788302688632, 4084.7641184324057, 4889.970687598453, 4970.110027289251]
@@ -30,11 +31,12 @@ import utils
 TOTAL_LAPS = 75
 track_config = pd.read_csv('config/track_config.csv')
 
-location = 'Melbourne'
-year = 2024
-needed_session = 'Race'
+location = sys.argv[1]
+year = int(sys.argv[2])
+needed_session = sys.argv[3]
 
 track = track_config.query(f''' circuit_location == '{location}' ''')
+
 
 circuit_length = int(track.circuit_length.iloc[0])
 corners = eval(track.corners.iloc[0])
@@ -45,46 +47,16 @@ after_start_line = eval(track.after_start_line.iloc[0])
 session = utils.get_session(location, year)
 session_key = session.query(f" session_name == '{needed_session}'").session_key.iloc[0]
 
-
 # Connect to your SQL database
 engine = create_engine(f"sqlite:///data/{session_key}.db")
 print(f"Loading from data/{session_key}.db")
 
+driver_data = pd.read_csv(f'config/driver_config_{year}.csv')
 driver_color = {}
 driver_config = {}
-
-driver_data = utils.get_data(f'https://api.openf1.org/v1/drivers?session_key={9472}')
-# print(driver_data)
 for ind, driver in driver_data.iterrows():
     driver_config[driver['name_acronym']] = driver['driver_number']
     driver_color[driver['name_acronym']]= f'''{driver['team_colour']}'''
-    if driver['name_acronym'] in ['BOT', 'ZHO']:
-        driver_color[driver['name_acronym']]= f'''00E673'''
-
-# print(driver_color)
-      
-'''
-driver_config = {'VER': 1,
-  'SAR': 2,
-  'RIC': 3,
-  'NOR': 4,
-  'GAS': 10,
-  'PER': 11,
-  'ALO': 14,
-  'LEC': 16,
-  'STR': 18,
-  'MAG': 20,
-  'TSU': 22,
-  'ALB': 23,
-  'ZHO': 24,
-  'HUL': 27,
-  'OCO': 31,
-  'HAM': 44,
-  'SAI': 55,
-  'RUS': 63,
-  'BOT': 77,
-  'PIA': 81}
-'''
 
 driver_config_reverse = {v: k for k, v in driver_config.items()}
 

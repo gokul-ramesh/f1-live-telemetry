@@ -7,6 +7,7 @@ from scipy.stats import linregress as fit
 import time
 import pickle
 import os
+import sys
 from tqdm import tqdm
 
 from datetime import timedelta, datetime
@@ -15,15 +16,17 @@ from sklearn.metrics import mean_squared_error
 
 import utils
 
-thresh = 100
-interval = 15
 
-location = 'Monza'
-year = 2023
-needed_session = 'Race'
+
+thresh = 100
+interval = 45
+
+location = sys.argv[1]
+year = int(sys.argv[2])
+needed_session = sys.argv[3]
 
 track_config = pd.read_csv('config/track_config.csv')
-driver_config = pd.read_csv(f'config/driver_config_{year}.csv')
+driver_data = pd.read_csv(f'config/driver_config_{year}.csv')
 
 track = track_config.query(f''' circuit_location == '{location}' ''')
 
@@ -50,7 +53,8 @@ driver_config = {row['name_acronym']:row['driver_number'] for ind, row in utils.
 driver_config_reverse = {v: k for k, v in driver_config.items()}
 
 pkl_filename = f"knn/knn_{location}-{year}_FP1_FP2_top25.pkl"
-utils.save_knn_pickle(pkl_filename, session_key_fp1, session_key_fp2, start_line, before_start_line, after_start_line, LAP_THRESHOLDS = 25)
+track_layout_filename = f"track_layout/{location}-{year}.csv"
+utils.save_knn_pickle(pkl_filename, track_layout_filename, session_key_fp1, session_key_fp2, start_line, before_start_line, after_start_line, LAP_THRESHOLDS = 25)
 
 with open(pkl_filename, 'rb') as file:
     knn, start_line, before_start_line, after_start_line = pickle.load(file)
