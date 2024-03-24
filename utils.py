@@ -26,6 +26,51 @@ def get_driver_config(session_key):
 def get_data(url):
   return pd.DataFrame(requests.get(url).json())
 
+def save_knn_pickle(pkl_filename, session_key_fp1, session_key_fp2, start_line, before_start_line, after_start_line, LAP_THRESHOLDS = 25):
+
+    if os.path.exists(pkl_filename) == False:
+    
+        lap_data = pd.concat([utils.get_data(f'''https://api.openf1.org/v1/laps?session_key={session_key_fp1}'''), utils.get_data(f'''https://api.openf1.org/v1/laps?session_key={session_key_fp2}''')]).dropna(subset =['lap_duration'])
+        lap_data['date_start'] = pd.to_datetime(lap_data['date_start'],format="ISO8601")
+        lap_data['date_end'] = lap_data.apply(lambda x: x.date_start + timedelta(seconds = x.lap_duration), axis = 1)
+    
+        ref_lap_distances = pd.DataFrame()
+      
+        print("Building model...")
+        for _, lap in tqdm(lap_data.sort_values(by = 'lap_duration').iloc[:LAP_THRESHOLDS].iterrows()):
+        
+            driver_number = lap.driver_number
+            start_time = lap.date_start
+            end_time = lap.date_end
+            session_key = lap.session_key
+            lap_duration = (end_time - start_time).total_seconds()
+    
+            config = {'start_time' : start_time, 'end_time' : end_time, 'session_key' : session_key, 'driver_number' : driver_number}
+            car_data, location_data = utils.get_data_channels(config)
+            
+            merged = utils.merge_data_channels(car_data, location_data)
+            merged = utils.compute_distance(merged, start_time)
+            ref_lap_distances = pd.concat([ref_lap_distances, merged[['x','y','distance', 'driver_number']]])
+        
+        ref_lap_distances.dropna(inplace = True)
+        
+        if not os.path.exists(f"track_layout/{location}-{year}.csv"):
+            ref_lap_distances[['x','y']].to_csv(f'track_layout/{location}-{year}.csv', index=True)
+            print(f"Saving track layout...")
+        
+        knn =  KNeighborsRegressor(n_neighbors = 15, weights = 'distance')
+        knn.fit(np.asarray(ref_lap_distances[['x', 'y']]), np.asarray(ref_lap_distances[['distance']]))    
+        print("Saving model...")
+        
+        with open(pkl_filename, 'wb') as file:
+            pickle.dump([knn, start_line, before_start_line, after_start_line], file)
+        
+        print("Done")
+    else:
+        print(f'{pkl_filename} already exists')
+        print('Done')
+        
+
 def get_session(location, year):
   return get_data(f"https://api.openf1.org/v1/sessions?location={location}&year={year}")
 
