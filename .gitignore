@@ -1,8 +1,8 @@
 #ignore db files
-*.db
+data/*.db
 
 #ignore pickle files
-*.pkl
+knn/*.pkl
 
 #ignore pycache
 __pycache__*

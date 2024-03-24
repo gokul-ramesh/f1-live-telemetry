@@ -14,40 +14,55 @@ from urllib.request import urlopen
 import json
 from scipy.ndimage import gaussian_filter1d
 import requests
+import utils
 
-# Bahrain corners = [711.9508171931816, 814.1876569292108, 936.7201493049793, 1506.9841172483643, 1787.9086361225473, 1880.658880160338, 1975.1619299965303, 2232.6789270606096, 2598.3923945375827, 2691.728150228979, 3466.886530179646, 3875.788302688632, 4084.7641184324057, 4889.970687598453, 4970.110027289251]
-corners = [ 354.42083043,  439.27690256, 1080.70076863, 1232.24836987,
-       1432.90920875, 1851.34924493, 1950.29260385, 2152.99296282,
-       3258.34533469, 3367.69508844, 4078.44514627, 4341.73730817,
-       4580.99734427, 4742.19833527] #Australia
-
-def get_data(url):
-  return pd.DataFrame(requests.get(url).json())
-
-def get_session(country, year):
-  return get_data(f"https://api.openf1.org/v1/sessions?country_name={country}&year={year}")
-
+# Bahrain 
+# corners = [711.9508171931816, 814.1876569292108, 936.7201493049793, 1506.9841172483643, 1787.9086361225473, 1880.658880160338, 1975.1619299965303, 2232.6789270606096, 2598.3923945375827, 2691.728150228979, 3466.886530179646, 3875.788302688632, 4084.7641184324057, 4889.970687598453, 4970.110027289251]
+# corners = [ 354.42083043,  439.27690256, 1080.70076863, 1232.24836987,
+#        1432.90920875, 1851.34924493, 1950.29260385, 2152.99296282,
+#        3258.34533469, 3367.69508844, 4078.44514627, 4341.73730817,
+#        4580.99734427, 4742.19833527] #Australia
+# # Azerbaijan
+# corners = [840.4395031422582, 925.2192705531841, 1168.2113212093552, 1741.685572018549, 2122.736856995752, 2364.579752964712, 2547.5431414033974, 2637.1095897460928, 2925.3814319017774, 3499.034858626688, 3638.214025589213, 3781.746397745988, 4025.8641801250633, 4156.471023673764, 4203.5096385535135, 4371.906121536575]
 
 #Session and circuit information
-country = "Australia"
-year = 2024
-TOTAL_LAPS = 75
 
-session = get_session(country, year)
-session_key = session.session_key.iloc[-1]
+TOTAL_LAPS = 75
+track_config = pd.read_csv('config/track_config.csv')
+
+location = 'Melbourne'
+year = 2024
+needed_session = 'Race'
+
+track = track_config.query(f''' circuit_location == '{location}' ''')
+
+circuit_length = int(track.circuit_length.iloc[0])
+corners = eval(track.corners.iloc[0])
+start_line = eval(track.start_line.iloc[0])
+before_start_line = eval(track.before_start_line.iloc[0])
+after_start_line = eval(track.after_start_line.iloc[0])
+
+session = utils.get_session(location, year)
+session_key = session.query(f" session_name == '{needed_session}'").session_key.iloc[0]
 
 
 # Connect to your SQL database
-engine = create_engine(f"sqlite:///{session_key}.db")
-print(f"Loading from {session_key}.db")
+engine = create_engine(f"sqlite:///data/{session_key}.db")
+print(f"Loading from data/{session_key}.db")
 
-driver_color={}
-driver_config={}
-for ind, driver in get_data(f'https://api.openf1.org/v1/drivers?session_key={session_key}').iterrows():
+driver_color = {}
+driver_config = {}
+
+driver_data = utils.get_data(f'https://api.openf1.org/v1/drivers?session_key={9472}')
+# print(driver_data)
+for ind, driver in driver_data.iterrows():
     driver_config[driver['name_acronym']] = driver['driver_number']
-    driver_color[driver['name_acronym']]= driver['team_colour']
-driver_color['ZHO'] = 'CFDBD1'
-driver_color['BOT'] = 'CFDBD1'
+    driver_color[driver['name_acronym']]= f'''{driver['team_colour']}'''
+    if driver['name_acronym'] in ['BOT', 'ZHO']:
+        driver_color[driver['name_acronym']]= f'''00E673'''
+
+# print(driver_color)
+      
 '''
 driver_config = {'VER': 1,
   'SAR': 2,
@@ -168,7 +183,7 @@ lap2_button_group = html.Div(
 
 # Define the layout of your app
 app.layout = html.Div([
-    html.H1(f"Laptime Comparison for Race {country}, {year}"),
+    html.H1(f"Laptime Comparison for Race {location}, {year}"),
 
   # driver1_button_group,
   dbc.Col(
@@ -253,8 +268,16 @@ app.layout = html.Div([
     
     # Display scatter plot based on the selected table and columns
     dcc.Graph(id='scatter-plot'),
+    dash_table.DataTable(
+        id='corner-minspeed-table',
+        columns=[
+            {'name': str(col), 'id': str(col)} for col in ['driver_code'] + [*range(1, 1+len(corners))]
+        ],
+        fill_width=False,
+      # data = pd.DataFrame(columns = columns).to_dict('records')
+    ),
     # dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', style={'marginRight':'10px'}, step=5, value = 100),
-    dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=5, value = 100),
+    dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 100),
     dcc.Graph(id='laptime-plot'),
     dash_table.DataTable(
         id='maxspeed-table',
@@ -320,30 +343,30 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
               go.Scatter(x=dist1, y=df1['drs']*5, mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1', showlegend=False),
               go.Scatter(x=dist2, y=df2['drs']*5, mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2', showlegend=False)]
 
-    #for corner in corners:
-    #    speeds.append(go.Scatter(x=[corner,corner], y=[0,320], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
+    for corner in corners:
+        speeds.append(go.Scatter(x=[corner,corner], y=[0,320], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
 
     throttles = [go.Scatter(x=dist1, y=df1['throttle'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1',showlegend=False),
               go.Scatter(x=dist2, y=df2['throttle'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2',showlegend=False),]
-    #for corner in corners:
-    #    throttles.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
+    for corner in corners:
+        throttles.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
 
     brakes = [go.Scatter(x=dist1, y=df1['brake'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1',showlegend=False),
               go.Scatter(x=dist2, y=df2['brake'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2',showlegend=False)]
-    #for corner in corners:
-    #    brakes.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
+    for corner in corners:
+        brakes.append(go.Scatter(x=[corner,corner], y=[0,100], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
 
     rpms = [go.Scatter(x=dist1, y=df1['rpm'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1',showlegend=False),
               go.Scatter(x=dist2, y=df2['rpm'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2',showlegend=False)]
 
-    #for corner in corners:
-    #    rpms.append(go.Scatter(x=[corner,corner], y=[0,12000], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
+    for corner in corners:
+        rpms.append(go.Scatter(x=[corner,corner], y=[0,12000], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
     
     gears = [go.Scatter(x=dist1, y=df1['n_gear'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"#{driver_color[driver1.upper()]}"), legendgroup='group1',showlegend=False),
               go.Scatter(x=dist2, y=df2['n_gear'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2',showlegend=False)]
 
-    #for corner in corners:
-    #    gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
+    for corner in corners:
+        gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
 
     fig = make_subplots(rows=6, cols=1, vertical_spacing = 0.01)
     
@@ -370,6 +393,49 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals)
 
     return fig
 
+# Define callback to update the displayed scatter plot based on the selected table and columns
+@app.callback(
+    Output('corner-minspeed-table', 'data'),
+    [Input('driver1-radiobuttons', 'value'),
+     Input('lap1-radiobuttons', 'value'),
+     Input('driver2-radiobuttons', 'value'),
+     Input('lap2-radiobuttons', 'value'),
+     Input('telemetry-updater-component', 'n_intervals')]
+)
+def update_corner_minspeed_table(driver1, lap1_number, driver2, lap2_number, n_intervals):
+
+    driver1_number = driver_config[driver1.upper()]
+    driver2_number = driver_config[driver2.upper()]
+
+    dist_ranges = [(corner - 30, corner + 30) for corner in corners]
+    query = f" SELECT driver_number, lap_number, actual_distance, speed FROM telemetry WHERE ((driver_number = {driver1_number} and lap_number = {lap1_number}) OR (driver_number = {driver2_number} and lap_number = {lap2_number})) AND ("
+    subquery = ' OR '.join([f'(actual_distance > {corner[0]} AND actual_distance < {corner[1]})' for corner in dist_ranges])
+    query += subquery + ')'  
+
+    # print(query)
+
+    df = pd.read_sql_query(query, engine)
+    # print(len(df))
+    # df['date'] = pd.to_datetime(df.date, format='ISO8601')
+    df[['actual_distance', 'speed']] = df[['actual_distance', 'speed']].astype(float)
+
+    # print(df)
+
+    groups = df.groupby(['driver_number', 'lap_number'])
+    df1 = groups.get_group((driver1_number, lap1_number)).sort_values(by = 'actual_distance')
+    df2 = groups.get_group((driver2_number, lap2_number)).sort_values(by = 'actual_distance')
+
+    dist1 = gaussian_filter1d(df1.actual_distance, sigma = 10)
+    dist2 = gaussian_filter1d(df2.actual_distance, sigma = 10)
+
+    data1 = [driver_config_reverse[driver1_number]] + [df1[(df1.actual_distance < corner[1]) & (df1.actual_distance > corner[0])].speed.round(0).min() for corner in dist_ranges]
+    data2 = [driver_config_reverse[driver2_number]] + [df2[(df2.actual_distance < corner[1]) & (df2.actual_distance > corner[0])].speed.round(0).min() for corner in dist_ranges]
+    # print(data1, data2)
+    columns = ['driver_code'] + [str(x) for x in range(1, 1+ len(corners))]
+    data = pd.concat([pd.DataFrame(data1).T, pd.DataFrame(data2).T])
+    data.columns = columns
+    return data.to_dict('records')
+
 @app.callback(
     Output('laptime-plot', 'figure'),
     [Input('laptime-updater-component', 'n_intervals'),
@@ -385,14 +451,9 @@ def update_laptime_plot(n_intervals, laptime_threshold):
     # df_.columns = [int(x) for x in df_.columns]
     # df_ = df_[sorted(df_.columns.tolist())].reset_index()
 
-    lines = {}
-    for name, color in driver_color.items():
-      lines[driver_config[name]] = dict(color=f"#{color}")
-      if driver_config[name] in [11, 18, 22, 23, 27, 31, 55, 63, 77, 81]:
-          lines[driver_config[name]]['dash'] = 'dot'
     traces = []
     for k, v in df.groupby('driver_number'):
-      traces.append(go.Scatter(x=v['lap_number'], y=v['lap_duration'], mode='markers+lines', name=f'{driver_config_reverse[int(k)]}', line=lines[int(k)]))
+      traces.append(go.Scatter(x=v['lap_number'], y=v['lap_duration'], mode='markers+lines', marker={'color': f'#{driver_color[driver_config_reverse[int(k)]]}'}, name=f'{driver_config_reverse[int(k)]}'))
     layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     # figure = go.Figure(data=traces, layout=layout, layout_yaxis_range=[92,103])
     figure = go.Figure(data=traces, layout=layout)
@@ -479,7 +540,7 @@ def update_position_table(n_intervals):
     df = pd.read_sql_query(query, engine)
     df[['driver_number', 'position']] = df[['driver_number', 'position']].astype(int)
     df['driver_code'] = df['driver_number'].map(driver_config_reverse)
-    df['date'] = pd.to_datetime(df['date']).dt.strftime('%H:%M:%S')
+    df['date'] = pd.to_datetime(df['date'], format='ISO8601').dt.strftime('%H:%M:%S')
 
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
@@ -499,12 +560,12 @@ def update_track_location_plot(n_intervals):
     df = pd.read_sql_query(query, engine)
 
     
-    df_layout = pd.read_csv(f'track_layout/{country}-{year}.csv')
+    df_layout = pd.read_csv(f'track_layout/{location}-{year}.csv')
     traces = []
-    traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040'), hoverinfo='skip', showlegend=False))
+    traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040', width = 3), hoverinfo='skip', showlegend=False))
     for k, v in df.groupby('driver_number'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', name=f'{driver_config_reverse[int(k)]}', line=dict(color=f'#{driver_color[driver_config_reverse[int(k)]]}')))
-    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[-15000,15000], xaxis_range=[-15000,15000])
+      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'#{driver_color[driver_config_reverse[int(k)]]}'}, text=f'{driver_config_reverse[int(k)]}', name=f'{driver_config_reverse[int(k)]}'))
+    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500])
     figure = go.Figure(data=traces, layout=layout)
     return figure
     
