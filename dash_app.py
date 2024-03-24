@@ -43,7 +43,7 @@ print(f"Loading from {session_key}.db")
 
 driver_color={}
 driver_config={}
-for ind, driver in get_data(f'https://api.openf1.org/v1/drivers?session_key={session_key}').iterrows():
+for ind, driver in get_data(f'https://api.openf1.org/v1/drivers?session_key=9484').iterrows():
     driver_config[driver['name_acronym']] = driver['driver_number']
     driver_color[driver['name_acronym']]= driver['team_colour']
 driver_color['ZHO'] = 'CFDBD1'
@@ -231,7 +231,7 @@ app.layout = html.Div([
     ),
     dcc.Interval(
         id='laptime-updater-component',
-        interval=2000,  # in milliseconds
+        interval=10000,  # in milliseconds
         n_intervals=0
     ),
     dcc.Interval(
@@ -379,7 +379,12 @@ def update_laptime_plot(n_intervals, laptime_threshold):
     # Replace this with your data update logic
 
     query = f"SELECT driver_number, lap_number, lap_duration FROM laptimes"
-    df = pd.read_sql_query(query, engine).dropna().astype(float).query(f"lap_duration < {laptime_threshold}") 
+    df = get_data(f'https://api.openf1.org/v1/laps?session_key={session_key}')
+    df = df[['driver_number', 'lap_number', 'lap_duration']].dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
+    df.set_index('lap_number', inplace=True)
+
+    #df = pd.read_sql_query(query, engine).dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
+
 
     # df_ = df.pivot(columns = 'lap_number', index = 'driver_number', values = 'lap_duration').round(3)
     # df_.columns = [int(x) for x in df_.columns]
@@ -392,7 +397,9 @@ def update_laptime_plot(n_intervals, laptime_threshold):
           lines[driver_config[name]]['dash'] = 'dot'
     traces = []
     for k, v in df.groupby('driver_number'):
-      traces.append(go.Scatter(x=v['lap_number'], y=v['lap_duration'], mode='markers+lines', name=f'{driver_config_reverse[int(k)]}', line=lines[int(k)]))
+      x = np.arange(min(v.index),max(v.index)).astype(int)
+      y = [v['lap_duration'].loc[int(i)] if i in v.index else None for i in range(int(max(v.index))+1) ]
+      traces.append(go.Scatter(x=x, y=y, mode='markers+lines', name=f'{driver_config_reverse[int(k)]}', line=lines[int(k)]))
     layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     # figure = go.Figure(data=traces, layout=layout, layout_yaxis_range=[92,103])
     figure = go.Figure(data=traces, layout=layout)
@@ -484,8 +491,14 @@ def update_position_table(n_intervals):
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
 
-    df = df.merge(df_laps, on = 'driver_number')
-  
+    #query = 'select driver_number, min(lap_duration) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number'
+    #df_fast_laps = pd.read_sql_query(query, engine)
+    #df_fast_laps['driver_number'] = df_fast_laps['driver_number'].astype(int)
+    #df_fast_laps['fastest_lap'] = df_fast_laps['fastest_lap'].astype(float)
+
+    #query = 'select driver_number, '
+
+    df = df.merge(df_laps, on = 'driver_number') #.merge(df_fast_laps, on='driver_number')
     return df[['driver_code', 'position', 'date', 'lap_number']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
