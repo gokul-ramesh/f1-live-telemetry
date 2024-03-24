@@ -381,7 +381,6 @@ def update_laptime_plot(n_intervals, laptime_threshold):
     query = f"SELECT driver_number, lap_number, lap_duration FROM laptimes"
     df = get_data(f'https://api.openf1.org/v1/laps?session_key={session_key}')
     df = df[['driver_number', 'lap_number', 'lap_duration']].dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
-    df.set_index('lap_number', inplace=True)
 
     #df = pd.read_sql_query(query, engine).dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
 
@@ -397,8 +396,10 @@ def update_laptime_plot(n_intervals, laptime_threshold):
           lines[driver_config[name]]['dash'] = 'dot'
     traces = []
     for k, v in df.groupby('driver_number'):
-      x = np.arange(min(v.index),max(v.index)).astype(int)
-      y = [v['lap_duration'].loc[int(i)] if i in v.index else None for i in range(int(max(v.index))+1) ]
+      v[['driver_number','lap_number']] = v[['driver_number','lap_number']].astype(int)
+      v.set_index('lap_number', inplace=True)
+      x = np.arange(1,max(v.index)+1)
+      y = [v['lap_duration'].loc[i] if float(i) in v.index.values else None for i in range(1,max(v.index)+1) ]
       traces.append(go.Scatter(x=x, y=y, mode='markers+lines', name=f'{driver_config_reverse[int(k)]}', line=lines[int(k)]))
     layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     # figure = go.Figure(data=traces, layout=layout, layout_yaxis_range=[92,103])
@@ -486,7 +487,7 @@ def update_position_table(n_intervals):
     df = pd.read_sql_query(query, engine)
     df[['driver_number', 'position']] = df[['driver_number', 'position']].astype(int)
     df['driver_code'] = df['driver_number'].map(driver_config_reverse)
-    df['date'] = pd.to_datetime(df['date']).dt.strftime('%H:%M:%S')
+    df['date'] = pd.to_datetime(df['date'], format='mixed').dt.strftime('%H:%M:%S')
 
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
