@@ -2,7 +2,7 @@
 import dash
 from dash import html, dcc, dash_table
 import dash_bootstrap_components as dbc
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from dash import dash_table
 import pandas as pd
 from sqlalchemy import create_engine
@@ -71,15 +71,6 @@ columns = ['driver_code']
 # app = dash.Dash(__name__)
 app = dash.Dash(__name__,external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-
-# driver1_buttons = html.Div([dbc.Button(f'{driver_config_reverse[driver_number]}', id=f"d-btn1-{driver_number}", color="secondary") for driver_number in driver_config_reverse.keys()],
-#                     className="driver1-grid gap-2",)
-# driver2_buttons = html.Div([dbc.Button(f'{driver_config_reverse[driver_number]}', id=f"d-btn2-{driver_number}", color="secondary") for driver_number in driver_config_reverse.keys()],
-#                     className="driver2-grid gap-2",)
-# lap1_buttons = html.Div([dbc.Button(f'{lap_number}', id=f"l-btn1-{lap_number}", color="secondary") for lap_number in range(0, 59)],
-#                     className="lap1-grid gap-2",)
-# lap2_buttons = html.Div([dbc.Button(f'{lap_number}', id=f"l-btn2-{lap_number}", color="secondary") for lap_number in range(0, 59)],
-#                     className="lap2-grid gap-2",)
 
 driver1_button_group = html.Div(
     [
@@ -153,59 +144,22 @@ lap2_button_group = html.Div(
 
 
 
+
 # Define the layout of your app
 app.layout = html.Div([
     html.H1(f"Laptime Comparison for Race {location}, {year}"),
 
   # driver1_button_group,
-  dbc.Col(
-    [
-              dbc.Row([driver1_button_group]),
-              dbc.Row([lap1_button_group]),
-              dbc.Row([driver2_button_group]),
-              dbc.Row([lap2_button_group]),
-    ], align = 'left'
-  ),
-  # driver2_button_group,
-  # lap2_button_group,
-
-    # dbc.Row(
-    #         [
-    #           dbc.Col([driver1_buttons], md=4),
-    #           dbc.Col([lap1_buttons], md=4),
-    #           dbc.Col([driver2_buttons], md=4),
-    #           dbc.Col([lap2_buttons], md=4),
-    #         ],
-    #         align="right",
-    #     ),
-    
-    # # Dropdown to select table
-   
-    # html.Label("Driver 1"),
-    # dcc.Dropdown(
-    #     id='driver1-input',
-    #     options=[
-    #         {'label': col, 'value': col} for col in driver_config.keys()
-    #     ],
-    #     style = {'width':'100px'},
-    #     value='VER'  # Default selected column
-    # ),
-
-    # html.Label("Lap 1"),
-    # dcc.Input(id='lap1-input', type='number', value=1),
-
-    # html.Label("Driver 2"),
-    #     dcc.Dropdown(
-    #     id='driver2-input',
-    #     options=[
-    #         {'label': col, 'value': col} for col in driver_config.keys()
-    #     ],
-    #     style = {'width':'100px'},
-    #     value='HAM'  # Default selected column
-    # ),
-
-    # html.Label("Lap 2"),
-    # dcc.Input(id='lap2-input', type='number', value=1),
+    dbc.Col(
+      [
+                dbc.Row([driver1_button_group]),
+                dbc.Row([lap1_button_group]),
+                dbc.Row([driver2_button_group]),
+                dbc.Row([lap2_button_group]),
+      ], align = 'left'
+    ),
+    html.Button('Submit', id='telemetry-submit-value', n_clicks=0),
+  
     dcc.Interval(
         id='telemetry-updater-component',
         interval=5000,  # in milliseconds
@@ -248,7 +202,6 @@ app.layout = html.Div([
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
-    # dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', style={'marginRight':'10px'}, step=5, value = 100),
     dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 100),
     dcc.Graph(id='laptime-plot'),
     dash_table.DataTable(
@@ -282,13 +235,14 @@ app.layout = html.Div([
 # Define callback to update the displayed scatter plot based on the selected table and columns
 @app.callback(
     Output('scatter-plot', 'figure'),
-    [Input('driver1-radiobuttons', 'value'),
-     Input('lap1-radiobuttons', 'value'),
-     Input('driver2-radiobuttons', 'value'),
-     Input('lap2-radiobuttons', 'value'),
+    [State('driver1-radiobuttons', 'value'),
+     State('lap1-radiobuttons', 'value'),
+     State('driver2-radiobuttons', 'value'),
+     State('lap2-radiobuttons', 'value'),
+     Input('telemetry-submit-value', 'n_clicks'),
      Input('telemetry-updater-component', 'n_intervals')]
 )
-def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_intervals):
+def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_intervals):
     driver1_number = driver_config[driver1.upper()]
     driver2_number = driver_config[driver2.upper()]
     query = f"SELECT * FROM telemetry WHERE driver_number = '{driver1_number}' and lap_number = '{lap1_number}';"
