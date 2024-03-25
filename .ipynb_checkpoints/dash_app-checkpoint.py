@@ -294,7 +294,8 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     for corner in corners:
         gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
 
-    fig = make_subplots(rows=6, cols=1, vertical_spacing = 0.01)
+    # fig = make_subplots(rows=5, cols=1, vertical_spacing = 0.01, row_width = [0.4, 0.15, 0.15, 0.15, 0.15])
+    fig = make_subplots(rows=5, cols=1, vertical_spacing = 0.005, row_width = [0.17, 0.17, 0.17, 0.17, 0.32]) # don't ask me how this works, the reverse of this row_width list is what I expected to work - it made the last plot the tallest
     
     for trace in speeds:
         fig.add_trace(trace, row=1, col=1)
@@ -490,9 +491,28 @@ def update_track_location_plot(n_intervals):
     traces = []
     traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040', width = 3), hoverinfo='skip', showlegend=False))
     for k, v in df.groupby('driver_number'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'#{driver_color[driver_config_reverse[int(k)]]}'}, text=f'{driver_config_reverse[int(k)]}', name=f'{driver_config_reverse[int(k)]}'))
+      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'#{driver_color[driver_config_reverse[int(k)]]}'}, name=f'{driver_config_reverse[int(k)]}'))
     layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500])
     figure = go.Figure(data=traces, layout=layout)
+    figure.update_layout(
+    annotations=[
+        dict(
+            x= xi + np.clip(500 * np.abs(xi)/(xi**2 + yi**2)**0.5, 200, 400) * np.sign(xi),
+            y= yi + np.clip(500 * np.abs(yi)/(xi**2 + yi**2)**0.5, 200, 400) * np.sign(yi),
+            text=text,
+            showarrow=False,
+             font=dict(
+                family= 'Arial',
+                size = 18,
+                color= f'#{driver_color[text]}',
+                # weight='bold'
+             )  # Making the text bold
+            # xanchor='center',
+            # yanchor='bottom',
+        )
+        for xi, yi, text in zip(df.x, df.y, df.driver_number.map(driver_config_reverse))
+    ]
+)
     return figure
     
     
