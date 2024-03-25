@@ -3,6 +3,7 @@ Dash app \
   - [ ] organise plot layouts \ 
   - [ ] add live time delta plots \
   - [ ] add live position table \
+  - [ ] Submit button
 Laptimes plot \
   - [ ] add filter button \
 Telemetry plot \
@@ -17,6 +18,9 @@ Core logic \
   - [ ] add live time delta \
   - [ ] fetch live position from API \
   - [ ] Add config files for corners, circuit length and start lines
+  - [ ] SAving runtime states - update dB
+  - [ ] Driver grouping 
+  - [ ] Pit duration and stationary time
 
 
 Updates:
