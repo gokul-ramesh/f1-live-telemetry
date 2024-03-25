@@ -1,7 +1,8 @@
 # To do 
 
 ## Dash app 
-  - [ ] organise plot layouts 
+  - [ ] organise plot layouts
+  - [ ] public hosting???
   - [ ] add live time delta plots 
   - [x] add live position table
 ### Laptimes plot 
