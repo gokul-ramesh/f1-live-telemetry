@@ -294,14 +294,16 @@ while True:
         if merged_data.loc[ind, 'actual_distance'] - merged_data.loc[ind - (continuity_counter+1), 'actual_distance'] > 2000:
           merged_data.drop([ind], inplace=True)
           continuity_counter += 1
-          print(f'Deleted datapoints in {driver_code}s Lap{data["lap_number"][driver_code]}')
+           print(f'Deleted {continuity_counter} datapoints in {driver_code}s Lap{lap_number[driver_code]}')
         else:
           continuity_counter = 0
       merged_data.reset_index(inplace=True,drop=True)
       merged_data['lap_number'] = assign_lap_number(merged_data, lap_number[driver_code], circuit_length, latest_distance[driver_code])
-      telemetry_data = pd.concat([telemetry_data, merged_data])
       lap_number[driver_code] = merged_data.iloc[-1].lap_number
       latest_distance[driver_code] = merged_data.iloc[-1].actual_distance
+      merged_data.drop([0],inplace=True)
+      telemetry_data = pd.concat([telemetry_data, merged_data])
+      
     except Exception as e:
       print(f'{driver_number} failed')
       print(f'{e} exception')
