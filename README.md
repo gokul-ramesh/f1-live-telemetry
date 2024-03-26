@@ -5,6 +5,8 @@
   - [ ] public hosting???
   - [ ] add live time delta plots 
   - [x] add live position table
+  - [ ] Submit button
+  
 ### Laptimes plot 
   - [ ] toggle laptimes by teams, useful for car level comparison
   - [x] add filter button 
@@ -19,8 +21,8 @@
 
 ## Core logic 
   - [ ] add lap number adjust logic
-  - [ ] Update lap number counter to add last recorded distance 
-  - [ ] Optimize start line detection 
+  - [x] Update lap number counter to add last recorded distance 
+  - [x] ~~Optimize start line detection~~ Moved to config file
   - [ ] add live time delta
   - [ ] fuel corrected laptime plots
   - [ ] more controllable/modifiable lap assignments logic? if we spot an error, can we alter the offset for each driver in the dash ui
@@ -28,7 +30,9 @@
   - [ ] separate dashes/dash tabs for quali/race session, might need different plots 
   - [x] fetch live position from API 
   - [x] Add config files for corners, circuit length and start lines
-
+  - [ ] SAving runtime states - update dB
+  - [ ] Driver grouping 
+  - [ ] Pit duration and stationary time
 
 # Updates:
 
