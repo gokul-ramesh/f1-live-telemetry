@@ -1,23 +1,23 @@
-driver_number,name_acronym,team_name,team_colour
-1,VER,Red Bull Racing,3671C6
-2,SAR,Williams,37BEDD
-4,NOR,McLaren,F58020
-10,GAS,Alpine,2293D1
-11,PER,Red Bull Racing,3671C6
-14,ALO,Aston Martin,358C75
-16,LEC,Ferrari,F91536
-18,STR,Aston Martin,358C75
-20,MAG,Haas F1 Team,B6BABD
-21,DEV,AlphaTauri,5E8FAA
-22,TSU,AlphaTauri,5E8FAA
-23,ALB,Williams,37BEDD
-24,ZHO,Alfa Romeo,C92D4B
-27,HUL,Haas F1 Team,B6BABD
-31,OCO,Alpine,2293D1
-44,HAM,Mercedes,6CD3BF
-55,SAI,Ferrari,F91536
-63,RUS,Mercedes,6CD3BF
-77,BOT,Alfa Romeo,C92D4B
-81,PIA,McLaren,F58020
-3,RIC,AlphaTauri,5E8FAA
-40,LAW,AlphaTauri,5E8FAA
+driver_number,name_acronym,team_name,team_colour,team_order,driver_order
+1,VER,Red Bull Racing,3671C6,1,1
+11,PER,Red Bull Racing,3671C6,1,2
+16,LEC,Ferrari,F91536,2,3
+55,SAI,Ferrari,F91536,2,4
+4,NOR,McLaren,F58020,3,5
+81,PIA,McLaren,F58020,3,6
+44,HAM,Mercedes,6CD3BF,4,7
+63,RUS,Mercedes,6CD3BF,4,8
+14,ALO,Aston Martin,358C75,5,9
+18,STR,Aston Martin,358C75,5,10
+3,RIC,AlphaTauri,5E8FAA,6,11
+21,DEV,AlphaTauri,5E8FAA,6,12
+22,TSU,AlphaTauri,5E8FAA,6,13
+40,LAW,AlphaTauri,5E8FAA,6,14
+20,MAG,Haas F1 Team,B6BABD,7,15
+27,HUL,Haas F1 Team,B6BABD,7,16
+24,ZHO,Alfa Romeo,C92D4B,8,17
+77,BOT,Alfa Romeo,C92D4B,8,18
+2,SAR,Williams,37BEDD,9,19
+23,ALB,Williams,37BEDD,9,20
+10,GAS,Alpine,2293D1,10,21
+31,OCO,Alpine,2293D1,10,22

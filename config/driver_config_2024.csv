@@ -1,22 +1,22 @@
-driver_number,name_acronym,team_name,team_colour
-1,VER,Red Bull Racing,3671c6
-2,SAR,Williams,64c4ff
-3,RIC,RB,6692ff
-4,NOR,McLaren,ff8000
-10,GAS,Alpine,ff87bc
-11,PER,Red Bull Racing,3671c6
-14,ALO,Aston Martin,229971
-16,LEC,Ferrari,e8002d
-18,STR,Aston Martin,229971
-20,MAG,Haas F1 Team,b6babd
-22,TSU,RB,6692ff
-23,ALB,Williams,64c4ff
-24,ZHO,Kick Sauber,00e673
-27,HUL,Haas F1 Team,b6babd
-31,OCO,Alpine,ff87bc
-44,HAM,Mercedes,27f4d2
-55,SAI,Ferrari,e8002d
-63,RUS,Mercedes,27f4d2
-77,BOT,Kick Sauber,b6babd
-81,PIA,McLaren,ff8000
-38,BEA,Ferrari,e8002d
+driver_number,name_acronym,team_name,team_colour,team_order,driver_order
+1,VER,Red Bull Racing,3671c6,1,1
+11,PER,Red Bull Racing,3671c6,1,2
+16,LEC,Ferrari,e8002d,2,3
+38,BEA,Ferrari,e8002d,2,4
+55,SAI,Ferrari,e8002d,2,5
+4,NOR,McLaren,ff8000,3,6
+81,PIA,McLaren,ff8000,3,7
+44,HAM,Mercedes,27f4d2,4,8
+63,RUS,Mercedes,27f4d2,4,9
+14,ALO,Aston Martin,229971,5,10
+18,STR,Aston Martin,229971,5,11
+3,RIC,RB,6692ff,6,12
+22,TSU,RB,6692ff,6,13
+20,MAG,Haas F1 Team,b6babd,7,14
+27,HUL,Haas F1 Team,b6babd,7,15
+24,ZHO,Kick Sauber,00e673,8,16
+77,BOT,Kick Sauber,b6babd,8,17
+2,SAR,Williams,64c4ff,9,18
+23,ALB,Williams,64c4ff,9,19
+10,GAS,Alpine,ff87bc,10,20
+31,OCO,Alpine,ff87bc,10,21
