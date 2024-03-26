@@ -18,6 +18,7 @@
   
 
 ## Core logic 
+  - [ ] add lap number adjust logic
   - [ ] Update lap number counter to add last recorded distance 
   - [ ] Optimize start line detection 
   - [ ] add live time delta
