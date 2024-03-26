@@ -49,8 +49,24 @@ session_key_race = session.query(f" session_name == '{needed_session}'").session
 race_start_time = pd.to_datetime(session.query(f" session_name == '{needed_session}'").date_start.iloc[0])
 race_end_time = pd.to_datetime(session.query(f" session_name == '{needed_session}'").date_end.iloc[0])
 
-driver_config = {row['name_acronym']:row['driver_number'] for ind, row in utils.get_data(f'https://api.openf1.org/v1/drivers?session_key={session_key_race}').iterrows()}
-driver_config_reverse = {v: k for k, v in driver_config.items()}
+
+driver_data = pd.read_csv(f'config/driver_config_{year}.csv')
+driver_config = {}
+driver_config['driver_code'] = {}
+driver_config['driver_number'] = {}
+driver_config['team_name'] = {}
+driver_config['team_colour'] = {}
+driver_config['team_order'] = {}
+driver_config['driver_order'] = {}
+
+for ind, driver in driver_data.sort_values(by = ['team_order', 'driver_number']).iterrows():
+    driver_config['driver_number'][driver['name_acronym']] = driver['driver_number']
+    driver_config['driver_code'][driver['driver_number']] = driver['name_acronym']
+    driver_config['team_name'][driver['name_acronym']]= f'''{driver['team_name']}'''
+    driver_config['team_colour'][driver['name_acronym']]= f'''#{driver['team_colour']}'''
+    driver_config['team_order'][driver['name_acronym']] = driver['team_order']
+    driver_config['driver_order'][driver['name_acronym']] = driver['driver_order']
+
 
 pkl_filename = f"knn/knn_{location}-{year}_FP1_FP2_top25.pkl"
 track_layout_filename = f"track_layout/{location}-{year}.csv"
@@ -72,7 +88,7 @@ engine = create_engine(f"sqlite:///{db_file}")
 data = {}
 data['data'] = {}
 data['lap_number'] = {}
-for driver_code, driver_number in driver_config.items():
+for driver_code, driver_number in driver_config['driver_number'].items():
   data['data'][driver_number] = pd.DataFrame()
   data['lap_number'][driver_code] = [1, 0]
 
@@ -104,7 +120,7 @@ for timestamp in pd.date_range(race_start_time + timedelta(minutes = 1), race_en
     car_data, location_data = utils.get_data_channels({'start_time' : st, 'end_time' : et, 'session_key' : session_key_race})
     telemetry_data = pd.DataFrame()
     
-    for driver_code, driver_number in driver_config.items():
+    for driver_code, driver_number in driver_config['driver_number'].items():
         try:
             merged_data = utils.merge_data_channels(car_data[car_data["driver_number"]==driver_number].sort_values(by="date"), location_data[location_data["driver_number"]==driver_number].sort_values(by="date"))
             merged_data['distance_l2'] = merged_data.apply(lambda row: utils.compute_l2((row.x, row.y), start_line, before_start_line, after_start_line), axis = 1)/10
@@ -131,6 +147,6 @@ for timestamp in pd.date_range(race_start_time + timedelta(minutes = 1), race_en
             print(f'{e} exception')
 
     telemetry_data.to_sql('telemetry', engine, if_exists = 'append', index = False)
-    print(et, time.time() - t1, sorted(data['lap_number'].items(), key = lambda kv: starting_grid[driver_config[kv[0]]]))
+    print(et, time.time() - t1, sorted(data['lap_number'].items(), key = lambda kv: starting_grid[driver_config['driver_number'][kv[0]]]))
     time.sleep(10)
     # st = max(pd.to_datetime(car_data["date"].iloc[-1]), pd.to_datetime(location_data["date"].iloc[-1]))
