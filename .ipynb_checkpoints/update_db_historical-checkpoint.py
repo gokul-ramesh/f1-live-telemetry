@@ -147,6 +147,7 @@ for timestamp in pd.date_range(race_start_time + timedelta(minutes = 1), race_en
             print(f'{e} exception')
 
     telemetry_data.to_sql('telemetry', engine, if_exists = 'append', index = False)
-    print(et, time.time() - t1, sorted(data['lap_number'].items(), key = lambda kv: starting_grid[driver_config['driver_number'][kv[0]]]))
+    # print(et, time.time() - t1, sorted(data['lap_number'].items(), key = lambda kv: starting_grid[driver_config['driver_code'][kv[0]]])) # i somehow broke this while making driver_config, fix please
+    print(et, time.time() - t1, sorted(data['lap_number'].items()))
     time.sleep(10)
     # st = max(pd.to_datetime(car_data["date"].iloc[-1]), pd.to_datetime(location_data["date"].iloc[-1]))

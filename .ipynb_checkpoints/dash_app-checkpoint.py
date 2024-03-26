@@ -213,7 +213,7 @@ app.layout = html.Div([
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
-    dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 100),
+    dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 200),
     dcc.Graph(id='laptime-plot'),
     dash_table.DataTable(
         id='maxspeed-table',
@@ -495,35 +495,60 @@ def update_track_location_plot(n_intervals):
     query = f"SELECT x, y, driver_number, date FROM telemetry where date = (select max(date) from telemetry) group by driver_number"
     df = pd.read_sql_query(query, engine)
     df['driver_order'] = df.driver_number.map(driver_config['driver_code']).map(driver_config['driver_order'])
-
+    df['driver_code'] = df.driver_number.map(driver_config['driver_code'])
     
     df_layout = pd.read_csv(f'track_layout/{location}-{year}.csv')
     traces = []
     traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040', width = 3), hoverinfo='skip', showlegend=False))
+    
     for k, v in df.sort_values(by = ['driver_order']).groupby('driver_order'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'{driver_config['team_colour'][driver_config['driver_code'][v.driver_number.iloc[0]]]}'}, name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}'))
-    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500])
-    figure = go.Figure(data=traces, layout=layout)
-    figure.update_layout(
+      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'{driver_config['team_colour'][driver_config['driver_code'][v.driver_number.iloc[0]]]}'}, name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}'))
+    
     annotations=[
         dict(
-            x= xi + np.clip(500 * np.abs(xi)/(xi**2 + yi**2)**0.5, 200, 400) * np.sign(xi),
-            y= yi + np.clip(500 * np.abs(yi)/(xi**2 + yi**2)**0.5, 200, 400) * np.sign(yi),
+            x= xi + np.clip(500 * np.abs(xi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(xi),
+            y= yi + np.clip(500 * np.abs(yi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(yi),
             text=text,
             showarrow=False,
-             font=dict(
+            font=dict(
                 family= 'Arial',
                 size = 18,
                 color= f'{driver_config['team_colour'][text]}',
                 # weight='bold'
-             )  # Making the text bold
+             ),  # Making the text bold
+            # legendgroup = text,
             # xanchor='center',
             # yanchor='bottom',
         )
         for xi, yi, text in zip(df.x, df.y, df.driver_number.map(driver_config['driver_code']))
     ]
-)
+    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500], annotations = annotations)
+    figure = go.Figure(data=traces, layout=layout)
     return figure
+    
+    # for k, v in df.sort_values(by = ['driver_order']).groupby('driver_order'):
+
+    #   text = v.driver_code.iloc[0]
+    #   xi = v.x.iloc[0]
+    #   yi = v.y.iloc[0]
+      
+    #   traces.append(go.Scatter(x=[xi], y=[yi], mode='markers', marker={'size': 18, 'color': f'{driver_config['team_colour'][driver_config['driver_code'][v.driver_number.iloc[0]]]}'}, name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}', text = text, textposition='top left'))
+    #       #                   text = dict(
+    #       #     x= xi + np.clip(500 * np.abs(xi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(xi),
+    #       #     y= yi + np.clip(500 * np.abs(yi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(yi),
+    #       #     text=text,
+    #       #     showarrow=False,
+    #       #     font=dict(
+    #       #         family= 'Arial',
+    #       #         size = 18,
+    #       #         color= f'{driver_config['team_colour'][text]}',
+    #       #      ), 
+    #       #     legendgroup = text,
+    #       # )
+      
+    # layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500])
+    # figure = go.Figure(data=traces, layout=layout)
+    # return figure
     
     
 @app.callback(
