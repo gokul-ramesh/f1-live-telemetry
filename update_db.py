@@ -247,12 +247,10 @@ thresh = 100
 
 interval = 300
 
-data = {}
-data['data'] = {}
-data['lap_number'] = {}
+lap_number,latest_distance = {}, {}
 for driver_code, driver_number in driver_config.items():
-  data['data'][driver_number] = pd.DataFrame()
-  data['lap_number'][driver_code] = [0, 0]
+  lap_number[driver_code] = 0
+  latest_distance[driver_code] = np.nan
 
 #for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):
 st = ses_start_time + timedelta(seconds=30)
@@ -291,24 +289,25 @@ while True:
       merged_data['actual_distance'] = merged_data.apply(lambda row: get_best_distance(row.distance_l2, row.distance_regr, thresh, circuit_length), axis = 1)
       merged_data.reset_index(inplace=True, drop=True)
       continuity_counter = 0
+      merged_data = pd.concat([pd.DataFrame({"actual_distance":[latest_distance[driver_code]]}), merged_data], ignore_index=True)
       for ind in merged_data.index[1:]:
         if merged_data.loc[ind, 'actual_distance'] - merged_data.loc[ind - (continuity_counter+1), 'actual_distance'] > 2000:
           merged_data.drop([ind], inplace=True)
-          print(f'Deleted datapoints in {driver_code}s Lap{data["lap_number"][driver_code]}')
           continuity_counter += 1
+          print(f'Deleted datapoints in {driver_code}s Lap{data["lap_number"][driver_code]}')
         else:
           continuity_counter = 0
       merged_data.reset_index(inplace=True,drop=True)
-      merged_data['lap_number'] = assign_lap_number(merged_data, data['lap_number'][driver_code][0], circuit_length, data['lap_number'][driver_code][1])
+      merged_data['lap_number'] = assign_lap_number(merged_data, lap_number[driver_code], circuit_length, latest_distance[driver_code])
       telemetry_data = pd.concat([telemetry_data, merged_data])
-      data['lap_number'][driver_code][0] = merged_data.iloc[-1].lap_number
-      data['lap_number'][driver_code][1] = merged_data.iloc[-1].actual_distance
+      lap_number[driver_code] = merged_data.iloc[-1].lap_number
+      latest_distance[driver_code] = merged_data.iloc[-1].actual_distance
     except Exception as e:
       print(f'{driver_number} failed')
       print(f'{e} exception')
 
   telemetry_data.to_sql('telemetry', engine, if_exists = 'append', index = False)
-  print(et, time.time() - t1, sorted(data['lap_number'].items(), key = lambda kv: starting_grid[driver_config[kv[0]]]))
+  print(et, time.time() - t1, sorted(lap_number.items(), key = lambda kv: starting_grid[driver_config[kv[0]]]))
   st = max(pd.to_datetime(car_data["date"].iloc[-1]), pd.to_datetime(location_data["date"].iloc[-1]))
   # break
 
