@@ -69,6 +69,12 @@ for ind, driver in driver_data.sort_values(by = ['team_order', 'driver_number'])
     driver_config['team_order'][driver['name_acronym']] = driver['team_order']
     driver_config['driver_order'][driver['name_acronym']] = driver['driver_order']
 
+lines = {}
+for name, color in driver_config['team_colour'].items():
+  lines[driver_config['driver_number'][name]] = dict(color=f"{color}")
+  if driver_config['driver_number'][name] in [11, 18, 22, 23, 27, 31, 55, 63, 77, 81]:
+    lines[driver_config['driver_number'][name]]['dash'] = 'dot'
+
 # driver_config_reverse = {v: k for k, v in driver_config.items()}
 
 def get_lap_dur(driv,lap):
@@ -183,7 +189,7 @@ app.layout = html.Div([
     ),
     dcc.Interval(
         id='laptime-updater-component',
-        interval=2000,  # in milliseconds
+        interval=10000,  # in milliseconds
         n_intervals=0
     ),
     dcc.Interval(
@@ -256,15 +262,22 @@ app.layout = html.Div([
 def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_intervals):
     driver1_number = driver_config['driver_number'][driver1.upper()]
     driver2_number = driver_config['driver_number'][driver2.upper()]
-    query = f"SELECT * FROM telemetry WHERE driver_number = '{driver1_number}' and lap_number = '{lap1_number}';"
-    df1 = pd.read_sql_query(query, engine)
-    df1['date'] = pd.to_datetime(df1.date, format='ISO8601')
-    df1[['rpm', 'speed','n_gear', 'throttle', 'drs', 'brake']] = df1[['rpm', 'speed', 'n_gear', 'throttle', 'drs', 'brake']].astype(int)
+    query = f"SELECT * FROM telemetry WHERE ((driver_number = '{driver1_number}' and lap_number = '{lap1_number}') or (driver_number = '{driver2_number}' and lap_number = '{lap2_number}'));"
+    df = pd.read_sql_query(query, engine)
+    df['date'] = pd.to_datetime(df.date, format='ISO8601')
+    df[['rpm', 'speed','n_gear', 'throttle', 'drs', 'brake', 'driver_number', 'lap_number']] = df[['rpm', 'speed', 'n_gear', 'throttle', 'drs', 'brake', 'driver_number', 'lap_number']].astype(int)
 
-    query = f"SELECT * FROM telemetry WHERE driver_number = '{driver2_number}' and lap_number = '{lap2_number}';"
-    df2 = pd.read_sql_query(query, engine)
-    df2['date'] = pd.to_datetime(df2.date, format='ISO8601')
-    df2[['rpm', 'speed','n_gear', 'throttle', 'drs', 'brake']] = df2[['rpm', 'speed', 'n_gear', 'throttle', 'drs', 'brake']].astype(int)
+    df1 = df[(df.lap_number == lap1_number) & (df.driver_number == driver1_number)]
+    df2 = df[(df.lap_number == lap2_number) & (df.driver_number == driver2_number)]
+  
+    # df1 = pd.read_sql_query(query, engine)
+    # df1['date'] = pd.to_datetime(df1.date, format='ISO8601')
+    # df1[['rpm', 'speed','n_gear', 'throttle', 'drs', 'brake']] = df1[['rpm', 'speed', 'n_gear', 'throttle', 'drs', 'brake']].astype(int)
+
+    # query = f"SELECT * FROM telemetry WHERE driver_number = '{driver2_number}' and lap_number = '{lap2_number}';"
+    # df2 = pd.read_sql_query(query, engine)
+    # df2['date'] = pd.to_datetime(df2.date, format='ISO8601')
+    # df2[['rpm', 'speed','n_gear', 'throttle', 'drs', 'brake']] = df2[['rpm', 'speed', 'n_gear', 'throttle', 'drs', 'brake']].astype(int)
 
     dist1 = gaussian_filter1d(df1.actual_distance, sigma = 10)
     dist2 = gaussian_filter1d(df2.actual_distance, sigma = 10)
@@ -334,13 +347,14 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
 # Define callback to update the displayed scatter plot based on the selected table and columns
 @app.callback(
     Output('corner-minspeed-table', 'data'),
-    [Input('driver1-radiobuttons', 'value'),
-     Input('lap1-radiobuttons', 'value'),
-     Input('driver2-radiobuttons', 'value'),
-     Input('lap2-radiobuttons', 'value'),
+   [State('driver1-radiobuttons', 'value'),
+     State('lap1-radiobuttons', 'value'),
+     State('driver2-radiobuttons', 'value'),
+     State('lap2-radiobuttons', 'value'),
+     Input('telemetry-submit-value', 'n_clicks'),
      Input('telemetry-updater-component', 'n_intervals')]
 )
-def update_corner_minspeed_table(driver1, lap1_number, driver2, lap2_number, n_intervals):
+def update_corner_minspeed_table(driver1, lap1_number, driver2, lap2_number, n_clicks, n_intervals):
 
     driver1_number = driver_config['driver_number'][driver1.upper()]
     driver2_number = driver_config['driver_number'][driver2.upper()]
@@ -383,14 +397,29 @@ def update_laptime_plot(n_intervals, laptime_threshold):
     # Replace this with your data update logic
 
     query = f"SELECT driver_number, lap_number, lap_duration FROM laptimes"
+    '''TODO'''
     df = pd.read_sql_query(query, engine).dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
     df['driver_order'] = df.driver_number.map(driver_config['driver_code']).map(driver_config['driver_order'])
 
+    #df = get_data(f'https://api.openf1.org/v1/laps?session_key={session_key}')
+    #df = df[['driver_number', 'lap_number', 'lap_duration']].dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
+
+    #df = pd.read_sql_query(query, engine).dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
+
+
+    # df_ = df.pivot(columns = 'lap_number', index = 'driver_number', values = 'lap_duration').round(3)
+    # df_.columns = [int(x) for x in df_.columns]
+    # df_ = df_[sorted(df_.columns.tolist())].reset_index()
+
+
+
     traces = []
     for k, v in df.sort_values(by = ['driver_order', 'lap_number']).groupby('driver_order'):
-      # print(k)
-      traces.append(go.Scatter(x=v['lap_number'], y=v['lap_duration'], mode='markers+lines', marker={'color': f'{driver_config['team_colour'][driver_config['driver_code'][v.driver_number.iloc[0]]]}'}, name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}'))
-    # print(traces[1])
+      v[['driver_number','lap_number']] = v[['driver_number','lap_number']].astype(int)
+      v.set_index('lap_number', inplace=True)
+      x = np.arange(1,max(v.index)+1)
+      y = [v['lap_duration'].loc[i] if float(i) in v.index.values else None for i in range(1,max(v.index)+1) ]
+      traces.append(go.Scatter(x=x, y=y, mode='markers+lines', name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}', line=lines[v.driver_number.iloc[0]]))
     layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     figure = go.Figure(data=traces, layout=layout)
     return figure
@@ -476,13 +505,19 @@ def update_position_table(n_intervals):
     df = pd.read_sql_query(query, engine)
     df[['driver_number', 'position']] = df[['driver_number', 'position']].astype(int)
     df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
-    df['date'] = pd.to_datetime(df['date'], format='ISO8601').dt.strftime('%H:%M:%S')
+    df['date'] = pd.to_datetime(df['date'], format='mixed').dt.strftime('%H:%M:%S')
 
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
 
-    df = df.merge(df_laps, on = 'driver_number')
-  
+    #query = 'select driver_number, min(lap_duration) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number'
+    #df_fast_laps = pd.read_sql_query(query, engine)
+    #df_fast_laps['driver_number'] = df_fast_laps['driver_number'].astype(int)
+    #df_fast_laps['fastest_lap'] = df_fast_laps['fastest_lap'].astype(float)
+
+    #query = 'select driver_number, '
+
+    df = df.merge(df_laps, on = 'driver_number') #.merge(df_fast_laps, on='driver_number')
     return df[['driver_code', 'position', 'date', 'lap_number']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
