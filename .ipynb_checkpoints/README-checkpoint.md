@@ -11,7 +11,7 @@
   - [ ] toggle laptimes by teams, useful for car level comparison
   - [x] add filter button 
 ### Telemetry plot 
-  - [ ] 2 separate calls to sql table in telemetry plot, do 1 query & split in function (repeat for all suitable tables)
+  - [ ] 2 separate calls to sql table in telemetry plot, do 1 query & split in function (repeat for other suitable tables)
   - [ ] Laptime on top of plot isn't matched with the plot, might be printing a different lap time
   - [x] replace drop down with buttons 
   - [x] Differentiate drivers from same team 
