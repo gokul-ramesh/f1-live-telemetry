@@ -1,6 +1,7 @@
 # To do 
 
 ## Dash app 
+  - [ ] LAP NUMBER IN TELEMETRY & LAPTIMES ARE OFFSET BY 1(nth lap in laptimes is ahead in time compared to telemtry)
   - [ ] organise plot layouts
   - [ ] public hosting???
   - [ ] add live time delta plots 
