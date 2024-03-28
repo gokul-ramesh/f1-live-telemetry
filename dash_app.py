@@ -69,6 +69,8 @@ for ind, driver in driver_data.sort_values(by = ['team_order', 'driver_number'])
     driver_config['team_order'][driver['name_acronym']] = driver['team_order']
     driver_config['driver_order'][driver['name_acronym']] = driver['driver_order']
 
+drs_map = {k:50 if k in [10,12,14] else 0 for k in range(15)}
+
 lines = {}
 for name, color in driver_config['team_colour'].items():
   lines[driver_config['driver_number'][name]] = dict(color=f"{color}")
@@ -288,6 +290,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     df = pd.read_sql_query(query, engine)
     df['date'] = pd.to_datetime(df.date, format='ISO8601')
     df[['rpm', 'speed','n_gear', 'throttle', 'drs', 'brake', 'driver_number', 'lap_number']] = df[['rpm', 'speed', 'n_gear', 'throttle', 'drs', 'brake', 'driver_number', 'lap_number']].astype(int)
+    df['drs'] = df['drs'].map(drs_map)
 
     df1 = df[(df.lap_number == lap1_number) & (df.driver_number == driver1_number)]
     df2 = df[(df.lap_number == lap2_number) & (df.driver_number == driver2_number)]
@@ -315,9 +318,10 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     # time2 = df2['date'] - df2['date'].iloc[0]
     
     speeds = [go.Scatter(x=df1.actual_distance_smoothed, y=df1['speed'], mode='lines', name=f'{driver1.upper()}, Lap {lap1_number}', line=dict(color=f"{driver_config['team_colour'][driver1.upper()]}"), legendgroup='group1'),
-              go.Scatter(x=df2.actual_distance_smoothed, y=df2['speed'], mode='lines', name=f'{driver2.upper()}, Lap {lap2_number}', line=line_driver2, legendgroup='group2'),
-              go.Scatter(x=df1.actual_distance_smoothed, y=df1['drs']*5, mode='lines', name=f'{driver1.upper()}', line=dict(color=f"{driver_config['team_colour'][driver1.upper()]}"), legendgroup='group1', showlegend=False),
-              go.Scatter(x=df2.actual_distance_smoothed, y=df2['drs']*5, mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2', showlegend=False)]
+              go.Scatter(x=df2.actual_distance_smoothed, y=df2['speed'], mode='lines', name=f'{driver2.upper()}, Lap {lap2_number}', line=line_driver2, legendgroup='group2')]
+
+    drss = [go.Scatter(x=df1.actual_distance_smoothed, y=df1['drs'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"{driver_config['team_colour'][driver1.upper()]}"), legendgroup='group1', showlegend=False),
+              go.Scatter(x=df2.actual_distance_smoothed, y=df2['drs'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2', showlegend=False)]
 
     for corner in corners:
         speeds.append(go.Scatter(x=[corner,corner], y=[0,320], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
@@ -350,7 +354,8 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
         gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
 
     # fig = make_subplots(rows=5, cols=1, vertical_spacing = 0.01, row_width = [0.4, 0.15, 0.15, 0.15, 0.15])
-    fig = make_subplots(rows=6, cols=1, vertical_spacing = 0.005, row_width = [0.12, 0.12, 0.12, 0.12, 0.22, 0.30]) # don't ask me how this works, the reverse of this row_width list is what I expected to work - it made the last plot the tallest
+    fig = make_subplots(rows=6, cols=1, vertical_spacing = 0.005,
+                        row_width = [0.12, 0.12, 0.12, 0.12, 0.22, 0.30]) # don't ask me how this works, the reverse of this row_width list is what I expected to work - it made the last plot the tallest
     
     for trace in speeds:
         fig.add_trace(trace, row=1, col=1)
@@ -364,8 +369,8 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
         fig.add_trace(trace, row=5, col=1)
     for trace in gears:
         fig.add_trace(trace, row=6, col=1)
-    #for trace in drss:
-    #    fig.add_trace(trace, row=6, col=1)
+    for trace in drss:
+        fig.add_trace(trace, row=1, col=1)
        
     fig['layout']['yaxis']['title']="Speed/DRS"
     fig['layout']['yaxis2']['title']="Delta"
