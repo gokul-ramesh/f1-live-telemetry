@@ -371,13 +371,22 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
         fig.add_trace(trace, row=6, col=1)
     for trace in drss:
         fig.add_trace(trace, row=1, col=1)
+
+    plot_list = ["Speed/DRS", "Live Delta", "Throttle", "Brake", "RPM", "Gear"]
+    for i in range(6):
+      if i == 0:
+        fig['layout']['yaxis']['title']= plot_list[i]
+        fig['layout']['xaxis']['range']= [0, circuit_length]
+      else:
+        fig['layout'][f'yaxis{i+1}']['title']= plot_list[i]
+        fig['layout'][f'xaxis{i+1}']['range']= [0, circuit_length]
        
-    fig['layout']['yaxis']['title']="Speed/DRS"
-    fig['layout']['yaxis2']['title']="Delta"
-    fig['layout']['yaxis3']['title']="Throttle"
-    fig['layout']['yaxis4']['title']="Brake"
-    fig['layout']['yaxis5']['title']="RPM"
-    fig['layout']['yaxis6']['title']="Gear"
+    # fig['layout']['yaxis']['title']="Speed/DRS"
+    # fig['layout']['yaxis2']['title']="Delta"
+    # fig['layout']['yaxis3']['title']="Throttle"
+    # fig['layout']['yaxis4']['title']="Brake"
+    # fig['layout']['yaxis5']['title']="RPM"
+    # fig['layout']['yaxis6']['title']="Gear"
     fig.update_layout(uirevision=8, height=1400, width=1800, title_text=f'''{driver1.upper()} : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()}: {get_lap_dur(driver2_number,lap2_number)}s''')
     fig.update_xaxes(showticklabels=False)
 

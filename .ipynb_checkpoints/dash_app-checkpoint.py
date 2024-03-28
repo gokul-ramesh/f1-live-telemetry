@@ -69,6 +69,8 @@ for ind, driver in driver_data.sort_values(by = ['team_order', 'driver_number'])
     driver_config['team_order'][driver['name_acronym']] = driver['team_order']
     driver_config['driver_order'][driver['name_acronym']] = driver['driver_order']
 
+drs_map = {k:50 if k in [10,12,14] else 0 for k in range(15)}
+
 lines = {}
 for name, color in driver_config['team_colour'].items():
   lines[driver_config['driver_number'][name]] = dict(color=f"{color}")
@@ -159,6 +161,21 @@ lap2_button_group = html.Div(
     className="radio-group",
 )
 
+group_button_group = html.Div(
+    [
+        dbc.RadioItems(
+            id="group-radiobuttons",
+            className="btn-group",
+            inputClassName="btn-check",
+            labelClassName="btn btn-outline-secondary",
+            labelCheckedClassName="active",
+                options=[{'label': html.Div([group], style={'color':'Black', 'font-size':16, 'text-align':'center'}), 'value': group} for group in ['G1', 'G2', 'G3','ALL']],
+        value='ALL',
+        ),
+        html.Div(id='output'),
+    ],
+    className='radio-group',
+)
 
 
 
@@ -220,6 +237,13 @@ app.layout = html.Div([
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
     dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 200),
+
+    dbc.Col(
+          [
+            dbc.Row([group_button_group]),
+          ], align = 'left'
+        ),
+
     dcc.Graph(id='laptime-plot'),
     dash_table.DataTable(
         id='maxspeed-table',
@@ -241,7 +265,7 @@ app.layout = html.Div([
     dash_table.DataTable(
         id='position-table',
         columns=[
-            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number']
+            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']
         ],
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
@@ -266,6 +290,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     df = pd.read_sql_query(query, engine)
     df['date'] = pd.to_datetime(df.date, format='ISO8601')
     df[['rpm', 'speed','n_gear', 'throttle', 'drs', 'brake', 'driver_number', 'lap_number']] = df[['rpm', 'speed', 'n_gear', 'throttle', 'drs', 'brake', 'driver_number', 'lap_number']].astype(int)
+    df['drs'] = df['drs'].map(drs_map)
 
     df1 = df[(df.lap_number == lap1_number) & (df.driver_number == driver1_number)]
     df2 = df[(df.lap_number == lap2_number) & (df.driver_number == driver2_number)]
@@ -293,9 +318,10 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     # time2 = df2['date'] - df2['date'].iloc[0]
     
     speeds = [go.Scatter(x=df1.actual_distance_smoothed, y=df1['speed'], mode='lines', name=f'{driver1.upper()}, Lap {lap1_number}', line=dict(color=f"{driver_config['team_colour'][driver1.upper()]}"), legendgroup='group1'),
-              go.Scatter(x=df2.actual_distance_smoothed, y=df2['speed'], mode='lines', name=f'{driver2.upper()}, Lap {lap2_number}', line=line_driver2, legendgroup='group2'),
-              go.Scatter(x=df1.actual_distance_smoothed, y=df1['drs']*5, mode='lines', name=f'{driver1.upper()}', line=dict(color=f"{driver_config['team_colour'][driver1.upper()]}"), legendgroup='group1', showlegend=False),
-              go.Scatter(x=df2.actual_distance_smoothed, y=df2['drs']*5, mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2', showlegend=False)]
+              go.Scatter(x=df2.actual_distance_smoothed, y=df2['speed'], mode='lines', name=f'{driver2.upper()}, Lap {lap2_number}', line=line_driver2, legendgroup='group2')]
+
+    drss = [go.Scatter(x=df1.actual_distance_smoothed, y=df1['drs'], mode='lines', name=f'{driver1.upper()}', line=dict(color=f"{driver_config['team_colour'][driver1.upper()]}"), legendgroup='group1', showlegend=False),
+              go.Scatter(x=df2.actual_distance_smoothed, y=df2['drs'], mode='lines', name=f'{driver2.upper()}', line=line_driver2, legendgroup='group2', showlegend=False)]
 
     for corner in corners:
         speeds.append(go.Scatter(x=[corner,corner], y=[0,320], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
@@ -328,7 +354,8 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
         gears.append(go.Scatter(x=[corner,corner], y=[0,8], mode='lines', line=dict(color="#404040", dash="dot"), showlegend=False))
 
     # fig = make_subplots(rows=5, cols=1, vertical_spacing = 0.01, row_width = [0.4, 0.15, 0.15, 0.15, 0.15])
-    fig = make_subplots(rows=6, cols=1, vertical_spacing = 0.005, row_width = [0.12, 0.12, 0.12, 0.12, 0.22, 0.30]) # don't ask me how this works, the reverse of this row_width list is what I expected to work - it made the last plot the tallest
+    fig = make_subplots(rows=6, cols=1, vertical_spacing = 0.005,
+                        row_width = [0.12, 0.12, 0.12, 0.12, 0.22, 0.30]) # don't ask me how this works, the reverse of this row_width list is what I expected to work - it made the last plot the tallest
     
     for trace in speeds:
         fig.add_trace(trace, row=1, col=1)
@@ -342,15 +369,24 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
         fig.add_trace(trace, row=5, col=1)
     for trace in gears:
         fig.add_trace(trace, row=6, col=1)
-    #for trace in drss:
-    #    fig.add_trace(trace, row=6, col=1)
+    for trace in drss:
+        fig.add_trace(trace, row=1, col=1)
+
+    plot_list = ["Speed/DRS", "Live Delta", "Throttle", "Brake", "RPM", "Gear"]
+    for i in range(6):
+      if i == 0:
+        fig['layout']['yaxis']['title']= plot_list[i]
+        fig['layout']['xaxis']['range']= [0, circuit_length]
+      else:
+        fig['layout'][f'yaxis{i+1}']['title']= plot_list[i]
+        fig['layout'][f'xaxis{i+1}']['range']= [0, circuit_length]
        
-    fig['layout']['yaxis']['title']="Speed/DRS"
-    fig['layout']['yaxis2']['title']="Delta"
-    fig['layout']['yaxis3']['title']="Throttle"
-    fig['layout']['yaxis4']['title']="Brake"
-    fig['layout']['yaxis5']['title']="RPM"
-    fig['layout']['yaxis6']['title']="Gear"
+    # fig['layout']['yaxis']['title']="Speed/DRS"
+    # fig['layout']['yaxis2']['title']="Delta"
+    # fig['layout']['yaxis3']['title']="Throttle"
+    # fig['layout']['yaxis4']['title']="Brake"
+    # fig['layout']['yaxis5']['title']="RPM"
+    # fig['layout']['yaxis6']['title']="Gear"
     fig.update_layout(uirevision=8, height=1400, width=1800, title_text=f'''{driver1.upper()} : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()}: {get_lap_dur(driver2_number,lap2_number)}s''')
     fig.update_xaxes(showticklabels=False)
 
@@ -402,12 +438,17 @@ def update_corner_minspeed_table(driver1, lap1_number, driver2, lap2_number, n_c
 
 @app.callback(
     Output('laptime-plot', 'figure'),
-    [Input('laptime-updater-component', 'n_intervals'),
-     Input('laptime-threshold-input', 'value')]
+    [
+     Input('group-radiobuttons', 'value'),
+     Input('laptime-threshold-input', 'value'),
+     Input('laptime-updater-component', 'n_intervals'),
+     ]
 )
-def update_laptime_plot(n_intervals, laptime_threshold):
+def update_laptime_plot(group_name, laptime_threshold, n_intervals):
     # Replace this with your data update logic
 
+    group_values = {'G1':['VER', 'LEC', 'SAI'], 'G2':['PIA', 'NOR', 'PER'], 'G3': ['ALO', 'STR']}
+    group_values['ALL'] = driver_config['driver_number'].keys()
     query = f"SELECT driver_number, lap_number, lap_duration FROM laptimes"
     '''TODO'''
     df = pd.read_sql_query(query, engine).dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
@@ -424,16 +465,18 @@ def update_laptime_plot(n_intervals, laptime_threshold):
     # df_ = df_[sorted(df_.columns.tolist())].reset_index()
 
 
-
     traces = []
+    visibility = {driver_no: True if driver_code in group_values[group_name] else "legendonly" for driver_code, driver_no in driver_config['driver_number'].items()}
     for k, v in df.sort_values(by = ['driver_order', 'lap_number']).groupby('driver_order'):
       v[['driver_number','lap_number']] = v[['driver_number','lap_number']].astype(int)
       v.set_index('lap_number', inplace=True)
       x = np.arange(1,max(v.index)+1)
       y = [v['lap_duration'].loc[i] if float(i) in v.index.values else None for i in range(1,max(v.index)+1) ]
-      traces.append(go.Scatter(x=x, y=y, mode='markers+lines', name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}', line=lines[v.driver_number.iloc[0]]))
-    layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
+      traces.append(go.Scatter(x=x, y=y, mode='markers+lines', name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', line=lines[v.driver_number.iloc[0]], visible=visibility[v.driver_number.iloc[0]]))
+    layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8, modebar_add=["v1hovermode","toggleSpikelines",])
     figure = go.Figure(data=traces, layout=layout)
+
+    #figure.update_traces(visible='legendonly', selector=dict(name=group_values[groups][0]))
     return figure
 
 @app.callback(
@@ -522,15 +565,25 @@ def update_position_table(n_intervals):
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
 
-    #query = 'select driver_number, min(lap_duration) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number'
-    #df_fast_laps = pd.read_sql_query(query, engine)
-    #df_fast_laps['driver_number'] = df_fast_laps['driver_number'].astype(int)
-    #df_fast_laps['fastest_lap'] = df_fast_laps['fastest_lap'].astype(float)
+    query = 'select driver_number, min(cast(lap_duration as float)) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number'
+    df_fast_laps = pd.read_sql_query(query, engine)
+    df_fast_laps['driver_number'] = df_fast_laps['driver_number'].astype(int)
+    df_fast_laps['fastest_lap'] = df_fast_laps['fastest_lap'].astype(float)
 
-    #query = 'select driver_number, '
+    latest_lap = int(max(df_laps['lap_number']))
+    query = f'select cast(driver_number as int) as driver_number, lap_number, lap_duration from laptimes where cast(lap_number as int) >= {latest_lap-3}'
+    df_latest_laps = pd.read_sql(query, engine)
+    enumer = 0
+    for k,v in df_latest_laps.sort_values(by='lap_number', ascending=False).groupby('lap_number'):
+        if len(v)==20:
+            v[f'Latest{enumer}'] = v['lap_duration']
+            print(len(v))
+            df = df.merge(v[['driver_number', f'Latest{enumer}']], on = 'driver_number')
+            print(df.columns)
+            enumer += 1
 
-    df = df.merge(df_laps, on = 'driver_number') #.merge(df_fast_laps, on='driver_number')
-    return df[['driver_code', 'position', 'date', 'lap_number']].sort_values(by = 'position').to_dict('records')
+    df = df.merge(df_laps, on = 'driver_number').merge(df_fast_laps, on='driver_number')
+    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
     Output('track-location-plot', 'figure'),
@@ -549,7 +602,7 @@ def update_track_location_plot(n_intervals):
     traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040', width = 3), hoverinfo='skip', showlegend=False))
     
     for k, v in df.sort_values(by = ['driver_order']).groupby('driver_order'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'{driver_config['team_colour'][driver_config['driver_code'][v.driver_number.iloc[0]]]}'}, name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}'))
+      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'}, name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'))
     
     annotations=[
         dict(
@@ -560,7 +613,7 @@ def update_track_location_plot(n_intervals):
             font=dict(
                 family= 'Arial',
                 size = 18,
-                color= f'{driver_config['team_colour'][text]}',
+                color= f'{driver_config["team_colour"][text]}',
                 # weight='bold'
              ),  # Making the text bold
             # legendgroup = text,
