@@ -1,7 +1,7 @@
 # To do 
 
 ## Dash app 
-  - [ ] LAP NUMBER IN TELEMETRY & LAPTIMES ARE OFFSET BY 1(nth lap in laptimes is ahead in time compared to telemtry)
+  - [x] LAP NUMBER IN TELEMETRY & LAPTIMES ARE OFFSET BY 1(nth lap in laptimes is ahead in time compared to telemtry) - update_db_historical.py Line 88, Assign [0,0]
   - [ ] organise plot layouts
   - [ ] public hosting???
   - [ ] add live time delta plots 
