@@ -23,6 +23,13 @@ def get_driver_config(session_key):
     driver_reverse_config = {row['driver_number'] : { 'driver_code' : row['name_acronym'], 'driver_colour' : row['team_colour']} for ind, row in driver_data.iterrows()}
     return driver_config, driver_reverse_config
 
+def delta_time(ref, comp):
+    ltime = comp['time'].dt.total_seconds().to_numpy()
+    ldistance = comp['actual_distance_smoothed'].to_numpy()
+    lap_time = np.interp(ref['actual_distance_smoothed'], ldistance, ltime)
+    delta = lap_time - ref['time'].dt.total_seconds()
+    return delta
+
 def get_data(url):
   return pd.DataFrame(requests.get(url).json())
 
