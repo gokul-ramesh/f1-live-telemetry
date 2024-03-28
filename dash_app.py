@@ -265,7 +265,7 @@ app.layout = html.Div([
     dash_table.DataTable(
         id='position-table',
         columns=[
-            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number']
+            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']
         ],
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
@@ -556,15 +556,25 @@ def update_position_table(n_intervals):
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
 
-    #query = 'select driver_number, min(lap_duration) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number'
-    #df_fast_laps = pd.read_sql_query(query, engine)
-    #df_fast_laps['driver_number'] = df_fast_laps['driver_number'].astype(int)
-    #df_fast_laps['fastest_lap'] = df_fast_laps['fastest_lap'].astype(float)
+    query = 'select driver_number, min(cast(lap_duration as float)) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number'
+    df_fast_laps = pd.read_sql_query(query, engine)
+    df_fast_laps['driver_number'] = df_fast_laps['driver_number'].astype(int)
+    df_fast_laps['fastest_lap'] = df_fast_laps['fastest_lap'].astype(float)
 
-    #query = 'select driver_number, '
+    latest_lap = int(max(df_laps['lap_number']))
+    query = f'select cast(driver_number as int) as driver_number, lap_number, lap_duration from laptimes where cast(lap_number as int) >= {latest_lap-3}'
+    df_latest_laps = pd.read_sql(query, engine)
+    enumer = 0
+    for k,v in df_latest_laps.sort_values(by='lap_number', ascending=False).groupby('lap_number'):
+        if len(v)==20:
+            v[f'Latest{enumer}'] = v['lap_duration']
+            print(len(v))
+            df = df.merge(v[['driver_number', f'Latest{enumer}']], on = 'driver_number')
+            print(df.columns)
+            enumer += 1
 
-    df = df.merge(df_laps, on = 'driver_number') #.merge(df_fast_laps, on='driver_number')
-    return df[['driver_code', 'position', 'date', 'lap_number']].sort_values(by = 'position').to_dict('records')
+    df = df.merge(df_laps, on = 'driver_number').merge(df_fast_laps, on='driver_number')
+    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
     Output('track-location-plot', 'figure'),
