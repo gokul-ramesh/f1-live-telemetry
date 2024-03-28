@@ -6,7 +6,7 @@
   - [ ] public hosting???
   - [ ] add live time delta plots 
   - [x] add live position table
-  - [ ] Submit button
+  - [x] Submit button
   
 ### Laptimes plot 
   - [ ] toggle laptimes by teams, useful for car level comparison
@@ -43,5 +43,6 @@
  - added driver positions
  - added laptime filter
  - fixed button logic, might have to scroll right for later lap buttons
+ - added fastest lap times of drivers and few latest lap times
 
  
