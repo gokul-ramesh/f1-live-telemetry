@@ -156,12 +156,32 @@ def merge_data_channels(car_data, location_data):
   merged.dropna(inplace = True)
 
   return merged
-  
-def get_best_distance(l2, regr, thresh, circuit_length):
-  if abs(l2) < thresh:
-     return l2 if l2 > 0 else circuit_length + l2
-  else:
-    return regr
+
+
+def is_within_threshold(distance, circuit_length, thresh):
+    if distance <= thresh*circuit_length or distance >= circuit_length*(1-thresh):
+        return True
+    else:
+        return False
+
+
+def get_best_distance(l2, regr, latest_distance, thresh, circuit_length):
+    actual_distance = list()
+    ind = 0
+    while True:
+        if ind>=len(l2):
+            break
+        prev_dist = latest_distance if ind == 0 else actual_distance[ind-1]
+        if is_within_threshold(prev_dist, circuit_length, thresh):
+            if l2[ind]>0:
+                actual_distance.append(l2[ind])
+            else:
+                actual_distance.append(circuit_length + l2[ind])
+        else:
+            actual_distance.append(regr[ind])
+        ind += 1
+    return actual_distance
+
 
 def assign_lap_number(data, current_lap, circuit_length, latest_dist):
   trans_dist = data.iloc[0].actual_distance - latest_dist

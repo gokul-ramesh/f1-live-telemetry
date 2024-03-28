@@ -13,7 +13,7 @@ import utils
 
 
 
-thresh = 100
+thresh = 0.04 # In percentage
 interval = 300
 
 location = sys.argv[1]
@@ -113,10 +113,11 @@ while True:
             merged_data = utils.merge_data_channels(car_data[car_data["driver_number"]==driver_number].sort_values(by="date"), location_data[location_data["driver_number"]==driver_number].sort_values(by="date"))
             merged_data['distance_l2'] = merged_data.apply(lambda row: utils.compute_l2((row.x, row.y), start_line, before_start_line, after_start_line), axis = 1)/10
             merged_data['distance_regr'] = knn.predict(np.asarray(merged_data[['x', 'y']]))
-            merged_data['actual_distance'] = merged_data.apply(lambda row: utils.get_best_distance(row.distance_l2, row.distance_regr, thresh, circuit_length), axis = 1)
+            merged_data['actual_distance'] = utils.get_best_distance(np.asarray(merged_data.distance_l2), np.asarray(merged_data.distance_regr), latest_distance[driver_code], thresh, circuit_length)
+            #merged_data.apply(lambda row: utils.get_best_distance(row.distance_l2, row.distance_regr, thresh, circuit_length), axis = 1)
             merged_data.reset_index(inplace=True, drop=True)
             continuity_counter = 0
-            merged_data = pd.concat([pd.DataFrame({"actual_distance":[latest_distance[driver_code]]}), merged_data], ignore_index=True)
+            merged_data = pd.concat([merged_data, pd.DataFrame({"actual_distance":[latest_distance[driver_code]]})], ignore_index=True)
             for ind in merged_data.index[1:]:
                 if merged_data.loc[ind, 'actual_distance'] - merged_data.loc[ind - (continuity_counter+1), 'actual_distance'] > 2000:
                     merged_data.drop([ind], inplace=True)
