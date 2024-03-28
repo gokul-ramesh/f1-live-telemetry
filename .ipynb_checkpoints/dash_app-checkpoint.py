@@ -52,7 +52,8 @@ engine = create_engine(f"sqlite:///data/{session_key}.db")
 print(f"Loading from data/{session_key}.db")
 
 driver_data = pd.read_csv(f'config/driver_config_{year}.csv')
-# driver_color = {}
+team_groups = {k: v['name_acronym'].tolist() for k, v in driver_data[['team_acronym', 'name_acronym']].groupby('team_acronym')}
+
 driver_config = {}
 driver_config['driver_code'] = {}
 driver_config['driver_number'] = {}
@@ -60,12 +61,14 @@ driver_config['team_name'] = {}
 driver_config['team_colour'] = {}
 driver_config['team_order'] = {}
 driver_config['driver_order'] = {}
+# driver_config['team_code'] = {}
 
 for ind, driver in driver_data.sort_values(by = ['team_order', 'driver_number']).iterrows():
     driver_config['driver_number'][driver['name_acronym']] = driver['driver_number']
     driver_config['driver_code'][driver['driver_number']] = driver['name_acronym']
     driver_config['team_name'][driver['name_acronym']]= f'''{driver['team_name']}'''
     driver_config['team_colour'][driver['name_acronym']]= f'''#{driver['team_colour']}'''
+    # driver_config['team_code'][driver['name_acronym']]= f'''{driver['team_acronym']}'''
     driver_config['team_order'][driver['name_acronym']] = driver['team_order']
     driver_config['driver_order'][driver['name_acronym']] = driver['driver_order']
 
@@ -169,7 +172,7 @@ group_button_group = html.Div(
             inputClassName="btn-check",
             labelClassName="btn btn-outline-secondary",
             labelCheckedClassName="active",
-                options=[{'label': html.Div([group], style={'color':'Black', 'font-size':16, 'text-align':'center'}), 'value': group} for group in ['G1', 'G2', 'G3','ALL']],
+                options=[{'label': html.Div([group], style={'color':'Black', 'font-size':16, 'text-align':'center'}), 'value': group} for group in list(team_groups.keys()) + ['ALL']],
         value='ALL',
         ),
         html.Div(id='output'),
@@ -446,9 +449,9 @@ def update_corner_minspeed_table(driver1, lap1_number, driver2, lap2_number, n_c
 )
 def update_laptime_plot(group_name, laptime_threshold, n_intervals):
     # Replace this with your data update logic
-
-    group_values = {'G1':['VER', 'LEC', 'SAI'], 'G2':['PIA', 'NOR', 'PER'], 'G3': ['ALO', 'STR']}
-    group_values['ALL'] = driver_config['driver_number'].keys()
+    
+    # team_groups = {'G1':['VER', 'LEC', 'SAI'], 'G2':['PIA', 'NOR', 'PER'], 'G3': ['ALO', 'STR']}
+    team_groups['ALL'] = driver_config['driver_number'].keys()
     query = f"SELECT driver_number, lap_number, lap_duration FROM laptimes"
     '''TODO'''
     df = pd.read_sql_query(query, engine).dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
@@ -466,7 +469,7 @@ def update_laptime_plot(group_name, laptime_threshold, n_intervals):
 
 
     traces = []
-    visibility = {driver_no: True if driver_code in group_values[group_name] else "legendonly" for driver_code, driver_no in driver_config['driver_number'].items()}
+    visibility = {driver_no: True if driver_code in team_groups[group_name] else "legendonly" for driver_code, driver_no in driver_config['driver_number'].items()}
     for k, v in df.sort_values(by = ['driver_order', 'lap_number']).groupby('driver_order'):
       v[['driver_number','lap_number']] = v[['driver_number','lap_number']].astype(int)
       v.set_index('lap_number', inplace=True)
@@ -476,7 +479,7 @@ def update_laptime_plot(group_name, laptime_threshold, n_intervals):
     layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8, modebar_add=["v1hovermode","toggleSpikelines",])
     figure = go.Figure(data=traces, layout=layout)
 
-    #figure.update_traces(visible='legendonly', selector=dict(name=group_values[groups][0]))
+    #figure.update_traces(visible='legendonly', selector=dict(name=team_groups[groups][0]))
     return figure
 
 @app.callback(
@@ -565,13 +568,13 @@ def update_position_table(n_intervals):
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
 
-    query = 'select driver_number, min(cast(lap_duration as float)) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number'
+    query = f"select driver_number, min(cast(lap_duration as float)) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number"
     df_fast_laps = pd.read_sql_query(query, engine)
     df_fast_laps['driver_number'] = df_fast_laps['driver_number'].astype(int)
     df_fast_laps['fastest_lap'] = df_fast_laps['fastest_lap'].astype(float)
 
     latest_lap = int(max(df_laps['lap_number']))
-    query = f'select cast(driver_number as int) as driver_number, lap_number, lap_duration from laptimes where cast(lap_number as int) >= {latest_lap-3}'
+    query = f"select cast(driver_number as int) as driver_number, lap_number, lap_duration from laptimes where cast(lap_number as int) >= {latest_lap-3}"
     df_latest_laps = pd.read_sql(query, engine)
     enumer = 0
     for k,v in df_latest_laps.sort_values(by='lap_number', ascending=False).groupby('lap_number'):
