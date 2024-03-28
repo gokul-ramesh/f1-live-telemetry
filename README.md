@@ -35,6 +35,7 @@
   - [ ] SAving runtime states - update dB
   - [ ] Driver grouping 
   - [ ] Pit duration and stationary time
+  - [ ] Historical analysis to calculate tyre deg
 
 # Updates:
 
