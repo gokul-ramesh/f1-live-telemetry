@@ -431,7 +431,7 @@ def update_laptime_plot(n_intervals, laptime_threshold):
       v.set_index('lap_number', inplace=True)
       x = np.arange(1,max(v.index)+1)
       y = [v['lap_duration'].loc[i] if float(i) in v.index.values else None for i in range(1,max(v.index)+1) ]
-      traces.append(go.Scatter(x=x, y=y, mode='markers+lines', name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}', line=lines[v.driver_number.iloc[0]]))
+      traces.append(go.Scatter(x=x, y=y, mode='markers+lines', name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', line=lines[v.driver_number.iloc[0]]))
     layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     figure = go.Figure(data=traces, layout=layout)
     return figure
@@ -549,7 +549,7 @@ def update_track_location_plot(n_intervals):
     traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040', width = 3), hoverinfo='skip', showlegend=False))
     
     for k, v in df.sort_values(by = ['driver_order']).groupby('driver_order'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'{driver_config['team_colour'][driver_config['driver_code'][v.driver_number.iloc[0]]]}'}, name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}'))
+      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'}, name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'))
     
     annotations=[
         dict(
@@ -560,7 +560,7 @@ def update_track_location_plot(n_intervals):
             font=dict(
                 family= 'Arial',
                 size = 18,
-                color= f'{driver_config['team_colour'][text]}',
+                color= f'{driver_config["team_colour"][text]}',
                 # weight='bold'
              ),  # Making the text bold
             # legendgroup = text,

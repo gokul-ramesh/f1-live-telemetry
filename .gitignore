@@ -15,3 +15,6 @@ venv/
 
 #ignore gitignore
 .gitignore
+
+#ignore .idea - pycharm
+.idea/

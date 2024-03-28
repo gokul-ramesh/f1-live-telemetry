@@ -1,8 +1,6 @@
-import requests
 import pandas as pd
 from sqlalchemy import create_engine, MetaData, delete
 import numpy as np
-from scipy.stats import linregress as fit
 
 import time
 import pickle
@@ -11,9 +9,6 @@ import sys
 from tqdm import tqdm
 
 from datetime import timedelta, datetime
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.metrics import mean_squared_error
-
 import utils
 
 
