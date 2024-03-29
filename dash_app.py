@@ -80,6 +80,12 @@ for name, color in driver_config['team_colour'].items():
   if driver_config['driver_number'][name] in [11, 18, 22, 23, 27, 31, 55, 63, 77, 81]:
     lines[driver_config['driver_number'][name]]['dash'] = 'dot'
 
+driver_symbol = {}
+for driver_no in driver_config['driver_number'].values():
+    if driver_no in [11, 18, 22, 23, 27, 31, 55, 63, 77, 81]:
+        driver_symbol[driver_no] = 'square'
+    else:
+        driver_symbol[driver_no] = 'circle'
 # driver_config_reverse = {v: k for k, v in driver_config.items()}
 
 def get_lap_dur(driv,lap):
@@ -671,8 +677,9 @@ def update_track_location_plot(n_intervals):
     traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040', width = 3), hoverinfo='skip', showlegend=False))
     
     for k, v in df.sort_values(by = ['driver_order']).groupby('driver_order'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'}, name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'))
-    
+      traces.append(go.Scatter(x=v['x'], y=v['y'], text=[f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'], textposition='top right', textfont=dict(color=f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'), mode='markers+text', marker={'size': 18, 'symbol': f"{driver_symbol[v.driver_number.iloc[0]]}", 'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'}, name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'))
+
+    '''
     annotations=[
         dict(
             x= xi + np.clip(500 * np.abs(xi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(xi),
@@ -690,8 +697,8 @@ def update_track_location_plot(n_intervals):
             # yanchor='bottom',
         )
         for xi, yi, text in zip(df.x, df.y, df.driver_number.map(driver_config['driver_code']))
-    ]
-    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500], annotations = annotations)
+    ]'''
+    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500]) #, annotations = annotations)
     figure = go.Figure(data=traces, layout=layout)
     return figure
     
