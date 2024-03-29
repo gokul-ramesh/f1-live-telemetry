@@ -310,7 +310,7 @@ app.layout = html.Div([
     dash_table.DataTable(
         id='position-table',
         columns=[
-            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']
+            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','L0', 'L1', 'L2']
         ],
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
@@ -628,31 +628,24 @@ def update_position_table(n_intervals):
     df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
     df['date'] = pd.to_datetime(df['date'], format='mixed').dt.strftime('%H:%M:%S')
 
+
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
 
-    query = f"select driver_number, min(cast(lap_duration as float)) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number"
-    df_fast_laps = pd.read_sql_query(query, engine)
-    df_fast_laps['driver_number'] = df_fast_laps['driver_number'].astype(int)
-    df_fast_laps['fastest_lap'] = df_fast_laps['fastest_lap'].astype(float)
+    query = f"select driver_number, lap_duration, lap_number from laptimes"
+    df_laptimes = pd.read_sql_query(query, engine).apply(pd.to_numeric)
+    df_fast = pd.DataFrame()
+    df_fast[['driver_number','fastest', 'f_lap']] = df_laptimes.iloc[df_laptimes.groupby('driver_number').lap_duration.idxmin()][['driver_number','lap_duration','lap_number']]
+    l = pd.DataFrame()
+    for k, v in df_laptimes.sort_values(by='lap_number').groupby('driver_number'):
+        l = pd.concat([l, v[v.lap_number > max(v.lap_number) - 3].reset_index(drop=True).drop(columns=['lap_number'])])
+    l.reset_index(inplace=True)
+    latest = l.pivot(columns='index', values='lap_duration', index='driver_number').reset_index()
+    latest[['L0','L1','L2']] = latest.iloc[:,1:]
 
-    latest_lap = int(max(df_laps['lap_number']))
-    query = f"select cast(driver_number as int) as driver_number, lap_number, lap_duration from laptimes where cast(lap_number as int) >= {latest_lap-3}"
-    df_latest_laps = pd.read_sql(query, engine)
-    enumer = 0
-    for k,v in df_latest_laps.sort_values(by='lap_number', ascending=False).groupby('lap_number'):
-        if len(v)==20:
-            v[f'Latest{enumer}'] = v['lap_duration']
-            print(len(v))
-            df = df.merge(v[['driver_number', f'Latest{enumer}']], on = 'driver_number')
-            print(df.columns)
-            enumer += 1
+    df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number').merge(latest, on='driver_number')
 
-    df = df.merge(df_laps, on = 'driver_number').merge(df_fast_laps, on='driver_number')
-    # print(df.columns)
-    print(df_latest_laps)
-  
-    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']].sort_values(by = 'position').to_dict('records')
+    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','L0', 'L1', 'L2']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
     Output('track-location-plot', 'figure'),
