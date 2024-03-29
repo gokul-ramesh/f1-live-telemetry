@@ -14,11 +14,12 @@ import utils
 
 
 thresh = 0.04 # In percentage
-interval = 300
+# interval = 300
 
 location = sys.argv[1]
 year = int(sys.argv[2])
 needed_session = sys.argv[3]
+interval = int(sys.argv[4])
 
 track_config = pd.read_csv('config/track_config.csv')
 driver_data = pd.read_csv(f'config/driver_config_{year}.csv')
