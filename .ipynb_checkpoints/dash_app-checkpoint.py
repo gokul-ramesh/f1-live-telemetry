@@ -305,7 +305,17 @@ app.layout = html.Div([
           ),
 
     dcc.Graph(id='laptime-plot'),
+    
+    dcc.Graph(id='track-location-plot'),
     dash_table.DataTable(
+        id='position-table',
+        columns=[
+            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']
+        ],
+        fill_width=False,
+      # data = pd.DataFrame(columns = columns).to_dict('records')
+    ),
+  dash_table.DataTable(
         id='maxspeed-table',
         columns=[
             {'name': col, 'id': col} for col in columns
@@ -317,15 +327,6 @@ app.layout = html.Div([
         id='samples-table',
         columns=[
             {'name': col, 'id': col} for col in columns
-        ],
-        fill_width=False,
-      # data = pd.DataFrame(columns = columns).to_dict('records')
-    ),
-    dcc.Graph(id='track-location-plot'),
-    dash_table.DataTable(
-        id='position-table',
-        columns=[
-            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']
         ],
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
@@ -648,6 +649,9 @@ def update_position_table(n_intervals):
             enumer += 1
 
     df = df.merge(df_laps, on = 'driver_number').merge(df_fast_laps, on='driver_number')
+    # print(df.columns)
+    print(df_latest_laps)
+  
     return df[['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(

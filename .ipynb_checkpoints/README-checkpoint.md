@@ -1,12 +1,12 @@
 # To do 
 
 ## Dash app 
-  - [ ] LAP NUMBER IN TELEMETRY & LAPTIMES ARE OFFSET BY 1(nth lap in laptimes is ahead in time compared to telemtry)
+  - [x] LAP NUMBER IN TELEMETRY & LAPTIMES ARE OFFSET BY 1(nth lap in laptimes is ahead in time compared to telemtry) - update_db_historical.py Line 88, Assign [0,0]
   - [ ] organise plot layouts
   - [ ] public hosting???
   - [ ] add live time delta plots 
   - [x] add live position table
-  - [ ] Submit button
+  - [x] Submit button
   
 ### Laptimes plot 
   - [ ] toggle laptimes by teams, useful for car level comparison
@@ -33,8 +33,9 @@
   - [x] fetch live position from API 
   - [x] Add config files for corners, circuit length and start lines
   - [ ] SAving runtime states - update dB
-  - [ ] Driver grouping 
+  - [x] Driver grouping 
   - [ ] Pit duration and stationary time
+  - [ ] Historical analysis to calculate tyre deg
 
 # Updates:
 
@@ -42,5 +43,6 @@
  - added driver positions
  - added laptime filter
  - fixed button logic, might have to scroll right for later lap buttons
+ - added fastest lap times of drivers and few latest lap times
 
  

@@ -33,7 +33,7 @@
   - [x] fetch live position from API 
   - [x] Add config files for corners, circuit length and start lines
   - [ ] SAving runtime states - update dB
-  - [ ] Driver grouping 
+  - [x] Driver grouping 
   - [ ] Pit duration and stationary time
   - [ ] Historical analysis to calculate tyre deg
 

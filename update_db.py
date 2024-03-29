@@ -92,7 +92,7 @@ st = race_start_time + timedelta(minutes=1)
 while True:
     et = st + timedelta(seconds=interval)
     print(st,et)
-    if et>race_end_time:
+    if et > race_end_time:
         break
 
     t1 = time.time()
