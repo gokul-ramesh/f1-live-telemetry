@@ -128,6 +128,55 @@ driver2_button_group = html.Div(
     className="radio-group",
 )
 
+group1_buttons = html.Div(
+    [
+        dbc.Checklist(
+            id="group1-buttons",
+            className="btn-group",
+            inputClassName="btn-check",
+            labelClassName="btn btn-outline-secondary",
+            labelCheckedClassName="active",
+                options=[{'label': html.Div([key], style={'color': 'Black', 'font-size': 20, 'text-align': 'center'}), 'value':key} for key, value in driver_config['driver_number'].items()],
+            value='VER',
+          # labelStyle= {"margin":"0.001rem"}
+        ),
+        html.Div(id="output"),
+    ],
+    className="radio-group",
+)
+group2_buttons = html.Div(
+    [
+        dbc.Checklist(
+            id="group2-buttons",
+            className="btn-group",
+            inputClassName="btn-check",
+            labelClassName="btn btn-outline-secondary",
+            labelCheckedClassName="active",
+                options=[{'label': html.Div([key], style={'color': 'Black', 'font-size': 20, 'text-align': 'center'}), 'value':key} for key, value in driver_config['driver_number'].items()],
+            value='VER',
+          # labelStyle= {"margin":"0.001rem"}
+        ),
+        html.Div(id="output"),
+    ],
+    className="radio-group",
+)
+group3_buttons = html.Div(
+    [
+        dbc.Checklist(
+            id="group3-buttons",
+            className="btn-group",
+            inputClassName="btn-check",
+            labelClassName="btn btn-outline-secondary",
+            labelCheckedClassName="active",
+                options=[{'label': html.Div([key], style={'color': 'Black', 'font-size': 20, 'text-align': 'center'}), 'value':key} for key, value in driver_config['driver_number'].items()],
+            value='VER',
+          # labelStyle= {"margin":"0.001rem"}
+        ),
+        html.Div(id="output"),
+    ],
+    className="radio-group",
+)
+
 lap1_button_group = html.Div(
     [
         dbc.RadioItems(
@@ -172,7 +221,7 @@ group_button_group = html.Div(
             inputClassName="btn-check",
             labelClassName="btn btn-outline-secondary",
             labelCheckedClassName="active",
-                options=[{'label': html.Div([group], style={'color':'Black', 'font-size':16, 'text-align':'center'}), 'value': group} for group in list(team_groups.keys()) + ['ALL']],
+                options=[{'label': html.Div([group], style={'color':'Black', 'font-size':16, 'text-align':'center'}), 'value': group} for group in list(team_groups.keys()) + ['G1', 'G2', 'G3', 'ALL']],
         value='ALL',
         ),
         html.Div(id='output'),
@@ -196,6 +245,15 @@ app.layout = html.Div([
       ], align = 'left'
     ),
     html.Button('Submit', id='telemetry-submit-value', n_clicks=0),
+
+    dbc.Col(
+      [
+                dbc.Row([html.H5("Group 1"), group1_buttons]),
+                dbc.Row([html.H5("Group 2"), group2_buttons]),
+                dbc.Row([html.H5("Group 3"), group3_buttons]),
+      ], align = 'left'
+    ),
+    
   
     dcc.Interval(
         id='telemetry-updater-component',
@@ -240,12 +298,11 @@ app.layout = html.Div([
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
     dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 200),
-
     dbc.Col(
-          [
-            dbc.Row([group_button_group]),
-          ], align = 'left'
-        ),
+            [
+              dbc.Row([group_button_group]),
+            ], align = 'left'
+          ),
 
     dcc.Graph(id='laptime-plot'),
     dash_table.DataTable(
@@ -444,13 +501,18 @@ def update_corner_minspeed_table(driver1, lap1_number, driver2, lap2_number, n_c
     [
      Input('group-radiobuttons', 'value'),
      Input('laptime-threshold-input', 'value'),
+     Input('group1-buttons', 'value'),
+     Input('group2-buttons', 'value'),
+     Input('group3-buttons', 'value'),
      Input('laptime-updater-component', 'n_intervals'),
      ]
 )
-def update_laptime_plot(group_name, laptime_threshold, n_intervals):
+def update_laptime_plot(group_name, laptime_threshold, group1, group2, group3, n_intervals):
     # Replace this with your data update logic
     
-    # team_groups = {'G1':['VER', 'LEC', 'SAI'], 'G2':['PIA', 'NOR', 'PER'], 'G3': ['ALO', 'STR']}
+    team_groups.update({'G1':group1})
+    team_groups.update({'G2':group2})
+    team_groups.update({'G3':group3})
     team_groups['ALL'] = driver_config['driver_number'].keys()
     query = f"SELECT driver_number, lap_number, lap_duration FROM laptimes"
     '''TODO'''
