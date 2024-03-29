@@ -310,7 +310,7 @@ app.layout = html.Div([
     dash_table.DataTable(
         id='position-table',
         columns=[
-            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','L0', 'L1', 'L2']
+            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','Latest', 'LatestBut1', 'LatestBut2']
         ],
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
@@ -633,19 +633,20 @@ def update_position_table(n_intervals):
     df_laps = pd.read_sql_query(query, engine)
 
     query = f"select driver_number, lap_duration, lap_number from laptimes"
-    df_laptimes = pd.read_sql_query(query, engine).apply(pd.to_numeric)
+    df_laptimes = pd.read_sql_query(query, engine).astype(float).dropna()
+    df_laptimes[['driver_number','lap_number']]=df_laptimes[['driver_number','lap_number']].astype(int)
     df_fast = pd.DataFrame()
-    df_fast[['driver_number','fastest', 'f_lap']] = df_laptimes.iloc[df_laptimes.groupby('driver_number').lap_duration.idxmin()][['driver_number','lap_duration','lap_number']]
+    df_fast[['driver_number','fastest', 'f_lap']] = df_laptimes.loc[df_laptimes.groupby('driver_number').lap_duration.idxmin()][['driver_number','lap_duration','lap_number']]
     l = pd.DataFrame()
     for k, v in df_laptimes.sort_values(by='lap_number').groupby('driver_number'):
         l = pd.concat([l, v[v.lap_number > max(v.lap_number) - 3].reset_index(drop=True).drop(columns=['lap_number'])])
     l.reset_index(inplace=True)
     latest = l.pivot(columns='index', values='lap_duration', index='driver_number').reset_index()
-    latest[['L0','L1','L2']] = latest.iloc[:,1:]
+    latest[['Latest','LatestBut1','LatestBut2']] = latest.iloc[:,:0:-1]
 
-    df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number').merge(latest, on='driver_number')
+    df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer')
 
-    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','L0', 'L1', 'L2']].sort_values(by = 'position').to_dict('records')
+    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','Latest', 'LatestBut1', 'LatestBut2']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
     Output('track-location-plot', 'figure'),
