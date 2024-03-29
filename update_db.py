@@ -118,7 +118,7 @@ while True:
             #merged_data.apply(lambda row: utils.get_best_distance(row.distance_l2, row.distance_regr, thresh, circuit_length), axis = 1)
             merged_data.reset_index(inplace=True, drop=True)
             continuity_counter = 0
-            merged_data = pd.concat([merged_data, pd.DataFrame({"actual_distance":[latest_distance[driver_code]]})], ignore_index=True)
+            merged_data = pd.concat([pd.DataFrame({"actual_distance":[latest_distance[driver_code]]}), merged_data], ignore_index=True)[merged_data.columns]
             for ind in merged_data.index[1:]:
                 if merged_data.loc[ind, 'actual_distance'] - merged_data.loc[ind - (continuity_counter+1), 'actual_distance'] > 2000:
                     merged_data.drop([ind], inplace=True)
