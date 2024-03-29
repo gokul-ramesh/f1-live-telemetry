@@ -245,15 +245,6 @@ app.layout = html.Div([
       ], align = 'left'
     ),
     html.Button('Submit', id='telemetry-submit-value', n_clicks=0),
-
-    dbc.Col(
-      [
-                dbc.Row([html.H5("Group 1"), group1_buttons]),
-                dbc.Row([html.H5("Group 2"), group2_buttons]),
-                dbc.Row([html.H5("Group 3"), group3_buttons]),
-      ], align = 'left'
-    ),
-    
   
     dcc.Interval(
         id='telemetry-updater-component',
@@ -297,6 +288,14 @@ app.layout = html.Div([
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
+
+    dbc.Col(
+      [
+                dbc.Row([html.H5("Group 1"), group1_buttons]),
+                dbc.Row([html.H5("Group 2"), group2_buttons]),
+                dbc.Row([html.H5("Group 3"), group3_buttons]),
+      ], align = 'left'
+    ),
     dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 200),
     dbc.Col(
             [
@@ -305,8 +304,11 @@ app.layout = html.Div([
           ),
 
     dcc.Graph(id='laptime-plot'),
-    
+
+
     dcc.Graph(id='track-location-plot'),
+
+    html.H2("Positions"),
     dash_table.DataTable(
         id='position-table',
         columns=[
@@ -315,6 +317,8 @@ app.layout = html.Div([
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
+
+    html.H2("Max Speed"),
   dash_table.DataTable(
         id='maxspeed-table',
         columns=[
@@ -323,6 +327,8 @@ app.layout = html.Div([
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
+
+    html.H2("Samples"),
    dash_table.DataTable(
         id='samples-table',
         columns=[
