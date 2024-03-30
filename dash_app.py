@@ -232,7 +232,7 @@ group_button_group = html.Div(
     className='radio-group',
 )
 
-df_position = pd.DataFrame(columns = ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2'])
+# df_position = pd.DataFrame(columns = ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2'])
 
 # Define the layout of your app
 app.layout = html.Div([
@@ -323,7 +323,7 @@ app.layout = html.Div([
             html.H2("Positions"),
             dash_table.DataTable(
             id='position-table',
-            data=df_position.to_dict('records'),
+            # data=df_position.to_dict('records'),
             style_data={ 'border': '1px solid black' },
             style_header={ 'border': '2px solid black' },
             # style_data_conditional=[
@@ -354,7 +354,7 @@ app.layout = html.Div([
                 },
             ],
             columns=[
-                {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
+                {'name': col, 'id': col} for col in ['date', 'driver_code', 'position',  'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
             ],
             fill_width=False,
             ),
@@ -681,25 +681,37 @@ def update_pitstop_columns(n_intervals):
 )
 def update_position_style_data_conditional(data, n_intervals):
 
+    def get_color(x):
+        # return np.clip(127 + int(128 * x/30), 127, 255)
+        return np.clip((255 - 128 * x/30), 0, 255)
+
     df = pd.DataFrame(data)
     fastest_lap = df.fastest.min()
     conditional_styles = []
 
     for i in range(len(data)):
         if df['n'][i] > df['fastest'][i]:
-            conditional_styles.append({'if': {'column_id': 'n', 'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'white',})
+            conditional_styles.append({'if': {'column_id': 'n', 'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'black',})
         else:
-            conditional_styles.append({'if': {'column_id': 'n', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'white',})
+            conditional_styles.append({'if': {'column_id': 'n', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'black',})
 
         if df['n-1'][i] > df['fastest'][i]:
-            conditional_styles.append({'if': {'column_id': 'n-1', 'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'white',})
+            conditional_styles.append({'if': {'column_id': 'n-1', 'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'black',})
         else:
-            conditional_styles.append({'if': {'column_id': 'n-1', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'white',})
+            conditional_styles.append({'if': {'column_id': 'n-1', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'black',})
 
         if df['n-2'][i] > df['fastest'][i]:
-            conditional_styles.append({'if': {'column_id': 'n-2', 'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'white',})
+            conditional_styles.append({'if': {'column_id': 'n-2', 'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'black',})
         else:
-            conditional_styles.append({'if': {'column_id': 'n-2', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'white',})
+            conditional_styles.append({'if': {'column_id': 'n-2', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'black',})
+
+        color = get_color(df['lap_number'][i] - df['f_lap'][i])
+        conditional_styles.append({'if': {'column_id': 'f_lap', 'row_index': i}, 'backgroundColor': f'''rgba({color}, {color}, {color}, 1)''', 'color': 'black'})
+        conditional_styles.append({'if': {'column_id': 'driver_code', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
+        conditional_styles.append({'if': {'column_id': 'date', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
+        conditional_styles.append({'if': {'column_id': 'lap_number', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
+        conditional_styles.append({'if': {'column_id': 'position', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
+
 
     
         # style_data_conditional = [{'if': {'column_id': x, 'row_index': y},
@@ -716,10 +728,10 @@ def update_position_style_data_conditional(data, n_intervals):
         # else:
         #     conditional_styles.append({'if': {'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'white',})
             
-    conditional_styles.append({'if': { 'filter_query': '{{fastest}} = {}'.format(fastest_lap), 'column_id': 'fastest'}, 'backgroundColor': '#ff66cc', 'color': 'white'})
-    conditional_styles.append({'if': { 'filter_query': '{{n}} = {}'.format(fastest_lap), 'column_id': 'n'}, 'backgroundColor': '#ff66cc', 'color': 'white',})
-    conditional_styles.append({'if': { 'filter_query': '{{n-1}} = {}'.format(fastest_lap), 'column_id': 'n-1'}, 'backgroundColor': '#ff66cc', 'color': 'white',})
-    conditional_styles.append({'if': { 'filter_query': '{{n-2}} = {}'.format(fastest_lap), 'column_id': 'n-2'}, 'backgroundColor': '#ff66cc', 'color': 'white',})
+    conditional_styles.append({'if': { 'filter_query': '{{fastest}} = {}'.format(fastest_lap), 'column_id': 'fastest'}, 'backgroundColor': '#ff66cc', 'color': 'black'})
+    conditional_styles.append({'if': { 'filter_query': '{{n}} = {}'.format(fastest_lap), 'column_id': 'n'}, 'backgroundColor': '#ff66cc', 'color': 'black',})
+    conditional_styles.append({'if': { 'filter_query': '{{n-1}} = {}'.format(fastest_lap), 'column_id': 'n-1'}, 'backgroundColor': '#ff66cc', 'color': 'black',})
+    conditional_styles.append({'if': { 'filter_query': '{{n-2}} = {}'.format(fastest_lap), 'column_id': 'n-2'}, 'backgroundColor': '#ff66cc', 'color': 'black',})
     
     return conditional_styles
 
@@ -916,7 +928,7 @@ def update_position_table(n_intervals):
 
     df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer').rename(columns = ({'Latest': 'n', 'LatestBut1':'n-1', 'LatestBut2':'n-2'}))
 
-    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']].sort_values(by = 'position').to_dict('records')
+    return df[['date', 'driver_code', 'position', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
     Output('track-location-plot', 'figure'),
