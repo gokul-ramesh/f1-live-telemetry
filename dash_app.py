@@ -232,7 +232,7 @@ group_button_group = html.Div(
     className='radio-group',
 )
 
-
+df_position = pd.DataFrame(columns = ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2'])
 
 # Define the layout of your app
 app.layout = html.Div([
@@ -284,6 +284,11 @@ app.layout = html.Div([
         interval=10000,  # in milliseconds
         n_intervals=0
     ),
+    dcc.Interval(
+        id='pitstop-formatting-updater-component',
+        interval=2000,  # in milliseconds
+        n_intervals=0
+    ),
     
     
     # Display scatter plot based on the selected table and columns
@@ -318,8 +323,36 @@ app.layout = html.Div([
             html.H2("Positions"),
             dash_table.DataTable(
             id='position-table',
+            data=df_position.to_dict('records'),
             style_data={ 'border': '1px solid black' },
             style_header={ 'border': '2px solid black' },
+            # style_data_conditional=[
+            #     {
+            #         'if': {
+            #             'filter_query': '{{fastest}} = {}'.format(df_position['fastest'].min()),
+            #             'column_id': 'fastest'
+            #         },
+            #         'backgroundColor': '#FF00FF',
+            #         'color': 'white'
+            #     }],
+
+            style_cell_conditional=[
+                {
+                    'if': {'column_id': 'driver_code'}, 'textAlign': 'center'
+                },
+                {
+                    'if': {'column_id': 'position'}, 'textAlign': 'center'
+                },
+                {
+                    'if': {'column_id': 'lap_number'}, 'textAlign': 'center'
+                },
+                # {
+                #     'if': {'column_id': 'fastest'}, 'textAlign': 'center'
+                # },
+                {
+                    'if': {'column_id': 'f_lap'}, 'textAlign': 'center'
+                },
+            ],
             columns=[
                 {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
             ],
@@ -636,10 +669,66 @@ def update_pitstop_columns(n_intervals):
     merged_windows = pd.DataFrame({
     'pit_stops': df_laps.groupby(['driver_number'])['lap_number'].agg(lambda x: len(x.unique())),
     })
-    max_pits = max(merged_windows.pit_stops)
+    max_pits = 1 if len(merged_windows) == 0 else max(merged_windows.pit_stops) 
     columns = ['driver_code'] + [item for sublist in [[f'lap{i+1}', f'pit{i+1}', f'rest{i+1}'] for i in range(max_pits)] for item in sublist]
     columns = [{'name': col, 'id': col} for col in columns]
     return columns
+
+@app.callback(
+    Output('position-table', 'style_data_conditional'),
+    [Input('position-table','data'),
+     Input('pitstop-formatting-updater-component', 'n_intervals')]
+)
+def update_position_style_data_conditional(data, n_intervals):
+    
+    df = pd.DataFrame(data)
+    fastest_lap = df.fastest.min()
+    return [{
+                'if' : {'filter_query': '{{fastest}} = {}'.format(fastest_lap), 'column_id': 'fastest'},
+                'backgroundColor': '#ff66cc', 'color': 'white'
+            }] + [{
+                'if': { 'filter_query': '{{n}} > {}'.format(fastest), 'column_id': 'n'},
+                'backgroundColor': '#ffcc00', 'color': 'black',
+            } for fastest in df['fastest']
+            ]  + [{
+                'if': { 'filter_query': '{{n}} <= {}'.format(fastest), 'column_id': 'n'},
+                'backgroundColor': '#00cc44', 'color': 'black',
+            } for fastest in df['fastest']
+            ]  + [{
+                'if': { 'filter_query': '{{n-1}} > {}'.format(fastest), 'column_id': 'n-1'},
+                'backgroundColor': '#ffcc00', 'color': 'black',
+            } for fastest in df['fastest']
+            ] + [{
+                'if': { 'filter_query': '{{n-1}} <= {}'.format(fastest), 'column_id': 'n-1'},
+                'backgroundColor': '#00cc44', 'color': 'black',
+            } for fastest in df['fastest']
+            ]  + [{
+                'if': { 'filter_query': '{{n-2}} > {}'.format(fastest), 'column_id': 'n-2'},
+                'backgroundColor': '#ffcc00', 'color': 'black',
+            } for fastest in df['fastest']
+            ] + [{
+                'if': { 'filter_query': '{{n-2}} <= {}'.format(fastest), 'column_id': 'n-2'},
+                'backgroundColor': '#00cc44', 'color': 'black',
+            } for fastest in df['fastest']
+            ] + [{
+                'if': { 'filter_query': '{{n}} = {}'.format(fastest_lap), 'column_id': 'n'},
+                'backgroundColor': '#ff66cc', 'color': 'white',  
+            }] + [{
+                'if': { 'filter_query': '{{n-1}} = {}'.format(fastest_lap), 'column_id': 'n-1'},
+                'backgroundColor': '#ff66cc', 'color': 'white',  
+            }] + [{
+                'if': { 'filter_query': '{{n-2}} = {}'.format(fastest_lap), 'column_id': 'n-2'},
+                'backgroundColor': '#ff66cc', 'color': 'white',  
+            }]
+            # }] + [{
+            #     'if': { 'filter_query': '{{n}} > {}'.format(fastest), 'column_id': 'n'},
+            #     'backgroundColor': '#ffcc00', 'color': 'black',
+            # } for fastest in df['fastest']
+            # ] + [{
+            #     'if': { 'filter_query': '{{n}} < {}'.format(fastest), 'column_id': 'n'},
+            #     'backgroundColor': '#00cc44', 'color': 'black',
+            # } for fastest in df['fastest']
+            # ]             
 
 @app.callback(
     Output('pitstop-table', 'data'),
