@@ -680,55 +680,99 @@ def update_pitstop_columns(n_intervals):
      Input('pitstop-formatting-updater-component', 'n_intervals')]
 )
 def update_position_style_data_conditional(data, n_intervals):
-    
+
     df = pd.DataFrame(data)
     fastest_lap = df.fastest.min()
-    return [{
-                'if' : {'filter_query': '{{fastest}} = {}'.format(fastest_lap), 'column_id': 'fastest'},
-                'backgroundColor': '#ff66cc', 'color': 'white'
-            }] + [{
-                'if': { 'filter_query': '{{n}} > {}'.format(fastest), 'column_id': 'n'},
-                'backgroundColor': '#ffcc00', 'color': 'black',
-            } for fastest in df['fastest']
-            ]  + [{
-                'if': { 'filter_query': '{{n}} <= {}'.format(fastest), 'column_id': 'n'},
-                'backgroundColor': '#00cc44', 'color': 'black',
-            } for fastest in df['fastest']
-            ]  + [{
-                'if': { 'filter_query': '{{n-1}} > {}'.format(fastest), 'column_id': 'n-1'},
-                'backgroundColor': '#ffcc00', 'color': 'black',
-            } for fastest in df['fastest']
-            ] + [{
-                'if': { 'filter_query': '{{n-1}} <= {}'.format(fastest), 'column_id': 'n-1'},
-                'backgroundColor': '#00cc44', 'color': 'black',
-            } for fastest in df['fastest']
-            ]  + [{
-                'if': { 'filter_query': '{{n-2}} > {}'.format(fastest), 'column_id': 'n-2'},
-                'backgroundColor': '#ffcc00', 'color': 'black',
-            } for fastest in df['fastest']
-            ] + [{
-                'if': { 'filter_query': '{{n-2}} <= {}'.format(fastest), 'column_id': 'n-2'},
-                'backgroundColor': '#00cc44', 'color': 'black',
-            } for fastest in df['fastest']
-            ] + [{
-                'if': { 'filter_query': '{{n}} = {}'.format(fastest_lap), 'column_id': 'n'},
-                'backgroundColor': '#ff66cc', 'color': 'white',  
-            }] + [{
-                'if': { 'filter_query': '{{n-1}} = {}'.format(fastest_lap), 'column_id': 'n-1'},
-                'backgroundColor': '#ff66cc', 'color': 'white',  
-            }] + [{
-                'if': { 'filter_query': '{{n-2}} = {}'.format(fastest_lap), 'column_id': 'n-2'},
-                'backgroundColor': '#ff66cc', 'color': 'white',  
-            }]
-            # }] + [{
-            #     'if': { 'filter_query': '{{n}} > {}'.format(fastest), 'column_id': 'n'},
-            #     'backgroundColor': '#ffcc00', 'color': 'black',
-            # } for fastest in df['fastest']
-            # ] + [{
-            #     'if': { 'filter_query': '{{n}} < {}'.format(fastest), 'column_id': 'n'},
-            #     'backgroundColor': '#00cc44', 'color': 'black',
-            # } for fastest in df['fastest']
-            # ]             
+    conditional_styles = []
+
+    for i in range(len(data)):
+        if df['n'][i] > df['fastest'][i]:
+            conditional_styles.append({'if': {'column_id': 'n', 'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'white',})
+        else:
+            conditional_styles.append({'if': {'column_id': 'n', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'white',})
+
+        if df['n-1'][i] > df['fastest'][i]:
+            conditional_styles.append({'if': {'column_id': 'n-1', 'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'white',})
+        else:
+            conditional_styles.append({'if': {'column_id': 'n-1', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'white',})
+
+        if df['n-2'][i] > df['fastest'][i]:
+            conditional_styles.append({'if': {'column_id': 'n-2', 'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'white',})
+        else:
+            conditional_styles.append({'if': {'column_id': 'n-2', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'white',})
+
+    
+        # style_data_conditional = [{'if': {'column_id': x, 'row_index': y},
+        #              'backgroundColor': '#3D9970','color': 'white'} for x,y  in zip((df.idxmax(axis=1)), df.index)]
+
+
+        # if df['n-1'][i] > df['fastest'][i]:
+        #     conditional_styles.append({'if': {'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'white',})
+        # else:
+        #     conditional_styles.append({'if': {'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'white',})
+
+        # if df['n-2'][i] > df['fastest'][i]:
+        #     conditional_styles.append({'if': {'row_index': i}, 'backgroundColor': '#ffcc00',  'color': 'white',})
+        # else:
+        #     conditional_styles.append({'if': {'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'white',})
+            
+    conditional_styles.append({'if': { 'filter_query': '{{fastest}} = {}'.format(fastest_lap), 'column_id': 'fastest'}, 'backgroundColor': '#ff66cc', 'color': 'white'})
+    conditional_styles.append({'if': { 'filter_query': '{{n}} = {}'.format(fastest_lap), 'column_id': 'n'}, 'backgroundColor': '#ff66cc', 'color': 'white',})
+    conditional_styles.append({'if': { 'filter_query': '{{n-1}} = {}'.format(fastest_lap), 'column_id': 'n-1'}, 'backgroundColor': '#ff66cc', 'color': 'white',})
+    conditional_styles.append({'if': { 'filter_query': '{{n-2}} = {}'.format(fastest_lap), 'column_id': 'n-2'}, 'backgroundColor': '#ff66cc', 'color': 'white',})
+    
+    return conditional_styles
+
+    
+    # df = pd.DataFrame(data)
+    # fastest_lap = df.fastest.min()
+
+    # return [{
+    #             'if' : {'filter_query': '{{fastest}} = {}'.format(fastest_lap), 'column_id': 'fastest'},
+    #             'backgroundColor': '#ff66cc', 'color': 'white'
+    #         }] + [{
+    #             'if': { 'filter_query': '{{n}} > {{fastest}}'},
+    #             'backgroundColor': '#ffcc00', 'color': 'black',
+    #         }]
+    #         #   + [{
+    #         #     'if': { 'filter_query': '{{n}} <= {{fastest}}', 'column_id': 'n'},
+    #         #     'backgroundColor': '#00cc44', 'color': 'black',
+    #         # }]  
+    #         # + [{
+    #         #     'if': { 'filter_query': '{{n-1}} > {}'.format(fastest), 'column_id': 'n-1'},
+    #         #     'backgroundColor': '#ffcc00', 'color': 'black',
+    #         # } for fastest in df['fastest']
+    #         # ] + [{
+    #         #     'if': { 'filter_query': '{{n-1}} <= {}'.format(fastest), 'column_id': 'n-1'},
+    #         #     'backgroundColor': '#00cc44', 'color': 'black',
+    #         # } for fastest in df['fastest']
+    #         # ]  + [{
+    #         #     'if': { 'filter_query': '{{n-2}} > {}'.format(fastest), 'column_id': 'n-2'},
+    #         #     'backgroundColor': '#ffcc00', 'color': 'black',
+    #         # } for fastest in df['fastest']
+    #         # ] + [{
+    #         #     'if': { 'filter_query': '{{n-2}} <= {}'.format(fastest), 'column_id': 'n-2'},
+    #         #     'backgroundColor': '#00cc44', 'color': 'black',
+    #         # } for fastest in df['fastest']
+    #         # ] + [{
+    #         #     'if': { 'filter_query': '{{n}} = {}'.format(fastest_lap), 'column_id': 'n'},
+    #         #     'backgroundColor': '#ff66cc', 'color': 'white',  
+    #         # }] + [{
+    #         #     'if': { 'filter_query': '{{n-1}} = {}'.format(fastest_lap), 'column_id': 'n-1'},
+    #         #     'backgroundColor': '#ff66cc', 'color': 'white',  
+    #         # }] + [{
+    #         #     'if': { 'filter_query': '{{n-2}} = {}'.format(fastest_lap), 'column_id': 'n-2'},
+    #         #     'backgroundColor': '#ff66cc', 'color': 'white',  
+    #         # }]
+    #         # }] + [{
+    #         #     'if': { 'filter_query': '{{n}} > {}'.format(fastest), 'column_id': 'n'},
+    #         #     'backgroundColor': '#ffcc00', 'color': 'black',
+    #         # } for fastest in df['fastest']
+    #         # ] + [{
+    #         #     'if': { 'filter_query': '{{n}} < {}'.format(fastest), 'column_id': 'n'},
+    #         #     'backgroundColor': '#00cc44', 'color': 'black',
+    #         # } for fastest in df['fastest']
+    #         # ]             
 
 @app.callback(
     Output('pitstop-table', 'data'),
