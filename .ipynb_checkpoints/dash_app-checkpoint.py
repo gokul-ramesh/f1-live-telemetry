@@ -17,6 +17,9 @@ import requests
 import utils
 import sys
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # Bahrain 
 # corners = [711.9508171931816, 814.1876569292108, 936.7201493049793, 1506.9841172483643, 1787.9086361225473, 1880.658880160338, 1975.1619299965303, 2232.6789270606096, 2598.3923945375827, 2691.728150228979, 3466.886530179646, 3875.788302688632, 4084.7641184324057, 4889.970687598453, 4970.110027289251]
 # corners = [ 354.42083043,  439.27690256, 1080.70076863, 1232.24836987,
@@ -30,6 +33,7 @@ import sys
 
 TOTAL_LAPS = 75
 track_config = pd.read_csv('config/track_config.csv')
+pit_limit = 80
 
 location = sys.argv[1]
 year = int(sys.argv[2])
@@ -80,6 +84,12 @@ for name, color in driver_config['team_colour'].items():
   if driver_config['driver_number'][name] in [11, 18, 22, 23, 27, 31, 55, 63, 77, 81]:
     lines[driver_config['driver_number'][name]]['dash'] = 'dot'
 
+driver_symbol = {}
+for driver_no in driver_config['driver_number'].values():
+    if driver_no in [11, 18, 22, 23, 27, 31, 55, 63, 77, 81]:
+        driver_symbol[driver_no] = 'square'
+    else:
+        driver_symbol[driver_no] = 'circle'
 # driver_config_reverse = {v: k for k, v in driver_config.items()}
 
 def get_lap_dur(driv,lap):
@@ -245,15 +255,6 @@ app.layout = html.Div([
       ], align = 'left'
     ),
     html.Button('Submit', id='telemetry-submit-value', n_clicks=0),
-
-    dbc.Col(
-      [
-                dbc.Row([html.H5("Group 1"), group1_buttons]),
-                dbc.Row([html.H5("Group 2"), group2_buttons]),
-                dbc.Row([html.H5("Group 3"), group3_buttons]),
-      ], align = 'left'
-    ),
-    
   
     dcc.Interval(
         id='telemetry-updater-component',
@@ -285,6 +286,11 @@ app.layout = html.Div([
         interval=2000,  # in milliseconds
         n_intervals=0
     ),
+    dcc.Interval(
+        id='pitstop-updater-component',
+        interval=5000,  # in milliseconds
+        n_intervals=0
+    ),
     
     
     # Display scatter plot based on the selected table and columns
@@ -297,6 +303,14 @@ app.layout = html.Div([
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
+
+    dbc.Col(
+      [
+                dbc.Row([html.H5("Group 1"), group1_buttons]),
+                dbc.Row([html.H5("Group 2"), group2_buttons]),
+                dbc.Row([html.H5("Group 3"), group3_buttons]),
+      ], align = 'left'
+    ),
     dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 200),
     dbc.Col(
             [
@@ -305,16 +319,30 @@ app.layout = html.Div([
           ),
 
     dcc.Graph(id='laptime-plot'),
-    
+
+
     dcc.Graph(id='track-location-plot'),
+
+    html.H2("Positions"),
     dash_table.DataTable(
         id='position-table',
         columns=[
-            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']
+            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','Latest', 'LatestBut1', 'LatestBut2']
         ],
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
+    html.H2("Pitstops"),
+    dash_table.DataTable(
+        id='pitstop-table',
+        columns=[
+            {'name': str(col), 'id': str(col)} for col in ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']
+        ],
+        fill_width=False,
+      # data = pd.DataFrame(columns = columns).to_dict('records')
+    ),
+
+    html.H2("Max Speed"),
   dash_table.DataTable(
         id='maxspeed-table',
         columns=[
@@ -323,6 +351,8 @@ app.layout = html.Div([
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
+
+    html.H2("Samples"),
    dash_table.DataTable(
         id='samples-table',
         columns=[
@@ -593,6 +623,58 @@ def update_maxspeed_table(n_intervals):
     return df_.to_dict('records')
 
 @app.callback(
+    Output('pitstop-table', 'data'),
+    [Input('pitstop-updater-component', 'n_intervals')]
+)
+def update_pitstop_table(n_intervals):
+    # Replace this with your data update logic
+
+    query = f"select * from laptimes"
+    df_laps = pd.read_sql_query(query, engine).query("is_pit_out_lap == 'True'")[['driver_number', 'lap_number']].astype(int)
+    df_laps = df_laps.sort_values(by = ['driver_number', 'lap_number'])
+    pit_out_laps = {(v.driver_number, v.lap_number):v.lap_number for k, v in df_laps.iterrows()}
+    pit_laps = {(v.driver_number, v.lap_number - 1):v.lap_number for k, v in df_laps.iterrows()}
+    pit_laps.update(pit_out_laps)
+
+    if len(pit_out_laps) == 0:
+      return pd.DataFrame(columns = ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']).to_dict('records')
+    
+    query = f"select * from telemetry where ("
+    subquery1 = ''.join([f'''(driver_number = '{k[0]}' and lap_number = '{k[1]}') or ''' for k in pit_laps.keys()] )
+    query = query+ subquery1[:-3] + ')'
+    df = pd.read_sql_query(query, engine)
+    
+    df_pit = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < pit_limit + 1)] 
+    df_pit['date'] = pd.to_datetime(df_pit['date'], format = 'mixed')
+    df_pit = df_pit.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp), start_date = ('date', 'min'), end_date = ('date', 'max')).reset_index()
+    df_pit['duration'] = df_pit['duration'].dt.total_seconds()
+    df_pit['pit_lap_number'] = df_pit.apply(lambda x: pit_laps[(x.driver_number, x.lap_number)], axis = 1)
+    df_pit = df_pit[['driver_number', 'pit_lap_number', 'duration']].groupby(['driver_number', 'pit_lap_number']).agg('sum').reset_index().rename(columns = {'pit_lap_number':'lap_number'}).round(3)
+    
+    df_rest = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < 1)]
+    df_rest['date'] = pd.to_datetime(df_rest['date'], format = 'mixed')
+    df_rest = df_rest.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp)).reset_index()
+    df_rest['duration'] = df_rest['duration'].dt.total_seconds()
+    
+    data = []
+    for k,v in df_rest.iterrows():
+        if (v.driver_number, v.lap_number) in pit_out_laps.keys():
+            data.append(v.T)
+        df_rest = pd.concat(data, axis = 1).T
+    
+    df_merged = df_pit.merge(df_rest, on = ['driver_number', 'lap_number'], suffixes = ('_pit', '_rest'), how = 'outer').sort_values(by = ['driver_number', 'lap_number'])
+    
+    merged_windows = pd.DataFrame({
+        'out_lap_number': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: x.unique().tolist()),    
+        'duration_pit': df_merged.groupby(['driver_number'])['duration_pit'].agg(lambda x: x.unique().tolist()),
+        'duration_rest': df_merged.groupby(['driver_number'])['duration_rest'].agg(lambda x: x.unique().tolist()),
+        }).reset_index()
+    merged_windows['driver_code'] = merged_windows.driver_number.map(driver_config['driver_code'])
+    # print(merged_windows)
+
+    return merged_windows.astype(str).to_dict('records')
+
+@app.callback(
     Output('samples-table', 'data'),
     [Input('maxspeed-updater-component', 'n_intervals')]
 )
@@ -628,31 +710,25 @@ def update_position_table(n_intervals):
     df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
     df['date'] = pd.to_datetime(df['date'], format='mixed').dt.strftime('%H:%M:%S')
 
+
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
 
-    query = f"select driver_number, min(cast(lap_duration as float)) as fastest_lap, lap_number as fast_lap_number from laptimes group by driver_number"
-    df_fast_laps = pd.read_sql_query(query, engine)
-    df_fast_laps['driver_number'] = df_fast_laps['driver_number'].astype(int)
-    df_fast_laps['fastest_lap'] = df_fast_laps['fastest_lap'].astype(float)
+    query = f"select driver_number, lap_duration, lap_number from laptimes"
+    df_laptimes = pd.read_sql_query(query, engine).astype(float).dropna()
+    df_laptimes[['driver_number','lap_number']]=df_laptimes[['driver_number','lap_number']].astype(int)
+    df_fast = pd.DataFrame()
+    df_fast[['driver_number','fastest', 'f_lap']] = df_laptimes.loc[df_laptimes.groupby('driver_number').lap_duration.idxmin()][['driver_number','lap_duration','lap_number']]
+    l = pd.DataFrame()
+    for k, v in df_laptimes.sort_values(by='lap_number').groupby('driver_number'):
+        l = pd.concat([l, v[v.lap_number > max(v.lap_number) - 3].reset_index(drop=True).drop(columns=['lap_number'])])
+    l.reset_index(inplace=True)
+    latest = l.pivot(columns='index', values='lap_duration', index='driver_number').reset_index()
+    latest[['Latest','LatestBut1','LatestBut2']] = latest.iloc[:,:0:-1]
 
-    latest_lap = int(max(df_laps['lap_number']))
-    query = f"select cast(driver_number as int) as driver_number, lap_number, lap_duration from laptimes where cast(lap_number as int) >= {latest_lap-3}"
-    df_latest_laps = pd.read_sql(query, engine)
-    enumer = 0
-    for k,v in df_latest_laps.sort_values(by='lap_number', ascending=False).groupby('lap_number'):
-        if len(v)==20:
-            v[f'Latest{enumer}'] = v['lap_duration']
-            print(len(v))
-            df = df.merge(v[['driver_number', f'Latest{enumer}']], on = 'driver_number')
-            print(df.columns)
-            enumer += 1
+    df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer')
 
-    df = df.merge(df_laps, on = 'driver_number').merge(df_fast_laps, on='driver_number')
-    # print(df.columns)
-    print(df_latest_laps)
-  
-    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest_lap', 'fast_lap_number','Latest0', 'Latest1', 'Latest2']].sort_values(by = 'position').to_dict('records')
+    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','Latest', 'LatestBut1', 'LatestBut2']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
     Output('track-location-plot', 'figure'),
@@ -671,8 +747,9 @@ def update_track_location_plot(n_intervals):
     traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040', width = 3), hoverinfo='skip', showlegend=False))
     
     for k, v in df.sort_values(by = ['driver_order']).groupby('driver_order'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'], mode='markers', marker={'size': 18, 'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'}, name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'))
-    
+      traces.append(go.Scatter(x=v['x'], y=v['y'], text=[f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'], textposition='top right', textfont=dict(color=f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'), mode='markers+text', marker={'size': 18, 'symbol': f"{driver_symbol[v.driver_number.iloc[0]]}", 'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'}, name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'))
+
+    '''
     annotations=[
         dict(
             x= xi + np.clip(500 * np.abs(xi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(xi),
@@ -690,8 +767,8 @@ def update_track_location_plot(n_intervals):
             # yanchor='bottom',
         )
         for xi, yi, text in zip(df.x, df.y, df.driver_number.map(driver_config['driver_code']))
-    ]
-    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500], annotations = annotations)
+    ]'''
+    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500]) #, annotations = annotations)
     figure = go.Figure(data=traces, layout=layout)
     return figure
     

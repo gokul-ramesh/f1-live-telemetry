@@ -17,6 +17,9 @@ import requests
 import utils
 import sys
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # Bahrain 
 # corners = [711.9508171931816, 814.1876569292108, 936.7201493049793, 1506.9841172483643, 1787.9086361225473, 1880.658880160338, 1975.1619299965303, 2232.6789270606096, 2598.3923945375827, 2691.728150228979, 3466.886530179646, 3875.788302688632, 4084.7641184324057, 4889.970687598453, 4970.110027289251]
 # corners = [ 354.42083043,  439.27690256, 1080.70076863, 1232.24836987,
@@ -30,6 +33,7 @@ import sys
 
 TOTAL_LAPS = 75
 track_config = pd.read_csv('config/track_config.csv')
+pit_limit = 80
 
 location = sys.argv[1]
 year = int(sys.argv[2])
@@ -282,6 +286,11 @@ app.layout = html.Div([
         interval=2000,  # in milliseconds
         n_intervals=0
     ),
+    dcc.Interval(
+        id='pitstop-updater-component',
+        interval=5000,  # in milliseconds
+        n_intervals=0
+    ),
     
     
     # Display scatter plot based on the selected table and columns
@@ -319,6 +328,15 @@ app.layout = html.Div([
         id='position-table',
         columns=[
             {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','Latest', 'LatestBut1', 'LatestBut2']
+        ],
+        fill_width=False,
+      # data = pd.DataFrame(columns = columns).to_dict('records')
+    ),
+    html.H2("Pitstops"),
+    dash_table.DataTable(
+        id='pitstop-table',
+        columns=[
+            {'name': str(col), 'id': str(col)} for col in ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']
         ],
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
@@ -603,6 +621,58 @@ def update_maxspeed_table(n_intervals):
     # layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     # figure = go.Figure(data=traces, layout=layout)
     return df_.to_dict('records')
+
+@app.callback(
+    Output('pitstop-table', 'data'),
+    [Input('pitstop-updater-component', 'n_intervals')]
+)
+def update_pitstop_table(n_intervals):
+    # Replace this with your data update logic
+
+    query = f"select * from laptimes"
+    df_laps = pd.read_sql_query(query, engine).query("is_pit_out_lap == 'True'")[['driver_number', 'lap_number']].astype(int)
+    df_laps = df_laps.sort_values(by = ['driver_number', 'lap_number'])
+    pit_out_laps = {(v.driver_number, v.lap_number):v.lap_number for k, v in df_laps.iterrows()}
+    pit_laps = {(v.driver_number, v.lap_number - 1):v.lap_number for k, v in df_laps.iterrows()}
+    pit_laps.update(pit_out_laps)
+
+    if len(pit_out_laps) == 0:
+      return pd.DataFrame(columns = ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']).to_dict('records')
+    
+    query = f"select * from telemetry where ("
+    subquery1 = ''.join([f'''(driver_number = '{k[0]}' and lap_number = '{k[1]}') or ''' for k in pit_laps.keys()] )
+    query = query+ subquery1[:-3] + ')'
+    df = pd.read_sql_query(query, engine)
+    
+    df_pit = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < pit_limit + 1)] 
+    df_pit['date'] = pd.to_datetime(df_pit['date'], format = 'mixed')
+    df_pit = df_pit.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp), start_date = ('date', 'min'), end_date = ('date', 'max')).reset_index()
+    df_pit['duration'] = df_pit['duration'].dt.total_seconds()
+    df_pit['pit_lap_number'] = df_pit.apply(lambda x: pit_laps[(x.driver_number, x.lap_number)], axis = 1)
+    df_pit = df_pit[['driver_number', 'pit_lap_number', 'duration']].groupby(['driver_number', 'pit_lap_number']).agg('sum').reset_index().rename(columns = {'pit_lap_number':'lap_number'}).round(3)
+    
+    df_rest = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < 1)]
+    df_rest['date'] = pd.to_datetime(df_rest['date'], format = 'mixed')
+    df_rest = df_rest.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp)).reset_index()
+    df_rest['duration'] = df_rest['duration'].dt.total_seconds()
+    
+    data = []
+    for k,v in df_rest.iterrows():
+        if (v.driver_number, v.lap_number) in pit_out_laps.keys():
+            data.append(v.T)
+        df_rest = pd.concat(data, axis = 1).T
+    
+    df_merged = df_pit.merge(df_rest, on = ['driver_number', 'lap_number'], suffixes = ('_pit', '_rest'), how = 'outer').sort_values(by = ['driver_number', 'lap_number'])
+    
+    merged_windows = pd.DataFrame({
+        'out_lap_number': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: x.unique().tolist()),    
+        'duration_pit': df_merged.groupby(['driver_number'])['duration_pit'].agg(lambda x: x.unique().tolist()),
+        'duration_rest': df_merged.groupby(['driver_number'])['duration_rest'].agg(lambda x: x.unique().tolist()),
+        }).reset_index()
+    merged_windows['driver_code'] = merged_windows.driver_number.map(driver_config['driver_code'])
+    # print(merged_windows)
+
+    return merged_windows.astype(str).to_dict('records')
 
 @app.callback(
     Output('samples-table', 'data'),
