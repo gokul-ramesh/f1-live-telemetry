@@ -617,6 +617,22 @@ def update_maxspeed_table(n_intervals):
     return df_.to_dict('records')
 
 @app.callback(
+    Output('pitstop-table', 'columns'),
+    [Input('pitstop-updater-component', 'n_intervals')]
+)
+def update_pitstop_columns(n_intervals):
+
+    query = f"select * from laptimes"
+    df_laps = pd.read_sql_query(query, engine).query("is_pit_out_lap == 'True'")[['driver_number', 'lap_number']].astype(int)
+    merged_windows = pd.DataFrame({
+    'pit_stops': df_laps.groupby(['driver_number'])['lap_number'].agg(lambda x: len(x.unique())),
+    })
+    max_pits = max(merged_windows.pit_stops)
+    columns = ['driver_code'] + [item for sublist in [[f'lap{i+1}', f'pit{i+1}', f'rest{i+1}'] for i in range(max_pits)] for item in sublist]
+    columns = [{'name': col, 'id': col} for col in columns]
+    return columns
+
+@app.callback(
     Output('pitstop-table', 'data'),
     [Input('pitstop-updater-component', 'n_intervals')]
 )
@@ -646,7 +662,7 @@ def update_pitstop_table(n_intervals):
     df_pit['duration'] = df_pit['duration'].dt.total_seconds()
     df_pit['pit_lap_number'] = df_pit.apply(lambda x: pit_laps[(x.driver_number, x.lap_number)], axis = 1)
     df_pit = df_pit[['driver_number', 'pit_lap_number', 'duration']].groupby(['driver_number', 'pit_lap_number']).agg('sum').reset_index().rename(columns = {'pit_lap_number':'lap_number'}).round(3)
-    print('df_pit len', len(df_pit))
+    # print('df_pit len', len(df_pit))
 
     # df_rest = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < 1)]
     df_rest = df[(abs(df.distance_l2) < 500) & (df.speed < 1)] #works on monaco, other places?
@@ -654,7 +670,7 @@ def update_pitstop_table(n_intervals):
     df_rest['date'] = pd.to_datetime(df_rest['date'], format = 'mixed')
     df_rest = df_rest.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp)).reset_index()
     df_rest['duration'] = df_rest['duration'].dt.total_seconds()
-    print('df_rest len', len(df_rest))
+    # print('df_rest len', len(df_rest))
 
     data = []
 
@@ -664,21 +680,38 @@ def update_pitstop_table(n_intervals):
           v['lap_number'] = pit_laps[(v.driver_number, v.lap_number)]
           data.append(v.T)
     # print(pit_laps.keys())
-    print('data len', len(data))
+    # print('data len', len(data))
     df_rest = pd.concat(data, axis = 1).T
     
     df_merged = df_pit.merge(df_rest, on = ['driver_number', 'lap_number'], suffixes = ('_pit', '_rest'), how = 'inner').sort_values(by = ['driver_number', 'lap_number'])
     # print(df_merged)
     
-    merged_windows = pd.DataFrame({
-        'out_lap_number': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: x.unique().tolist()),    
-        'duration_pit': df_merged.groupby(['driver_number'])['duration_pit'].agg(lambda x: x.unique().tolist()),
-        'duration_rest': df_merged.groupby(['driver_number'])['duration_rest'].agg(lambda x: x.unique().tolist()),
-        }).reset_index()
-    merged_windows['driver_code'] = merged_windows.driver_number.map(driver_config['driver_code'])
-    # print(merged_windows)
+    # merged_windows = pd.DataFrame({
+    #     'out_lap_number': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: x.unique().tolist()),    
+    #     'duration_pit': df_merged.groupby(['driver_number'])['duration_pit'].agg(lambda x: x.unique().tolist()),
+    #     'duration_rest': df_merged.groupby(['driver_number'])['duration_rest'].agg(lambda x: x.unique().tolist()),
+    #     }).reset_index()
+    # merged_windows['driver_code'] = merged_windows.driver_number.map(driver_config['driver_code'])
+    # # print(merged_windows)
 
-    return merged_windows.astype(str).to_dict('records')
+    # return merged_windows.astype(str).to_dict('records')
+
+    merged_windows = pd.DataFrame({
+    'lap_number': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: (x.unique().astype(int).tolist())),
+    'pit_stops': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: len(x.unique())),    
+    'duration_pit': df_merged.groupby(['driver_number'])['duration_pit'].agg(lambda x: x.unique().round(2).tolist()),
+    'duration_rest': df_merged.groupby(['driver_number'])['duration_rest'].agg(lambda x: x.unique().round(2).tolist()),
+    }).reset_index()
+
+    merged_windows['driver_code'] = merged_windows.driver_number.map(driver_config['driver_code'])
+
+    max_pits = max(merged_windows['pit_stops'])
+    drivers = merged_windows['driver_code']
+    laps = pd.DataFrame(merged_windows['lap_number'].to_list(), columns=[f'lap{i+1}' for i in range(max_pits)]).fillna('')
+    pit_duration = pd.DataFrame(merged_windows['duration_pit'].to_list(), columns=[f'pit{i+1}' for i in range(max_pits)]).fillna('')
+    rest_duration = pd.DataFrame(merged_windows['duration_rest'].to_list(), columns=[f'rest{i+1}' for i in range(max_pits)]).fillna('')
+    merged_windows = pd.concat([drivers, laps, pit_duration, rest_duration], axis = 1)[['driver_code'] + [item for sublist in [[f'lap{i+1}', f'pit{i+1}', f'rest{i+1}'] for i in range(max_pits)] for item in sublist]]
+    return merged_windows.sort_values(by = [f'lap{i+1}' for i in range(max_pits)]).astype(str).to_dict('records')
 
 @app.callback(
     Output('samples-table', 'data'),
