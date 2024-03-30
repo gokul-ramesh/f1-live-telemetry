@@ -319,6 +319,8 @@ app.layout = html.Div([
     html.H2("Positions"),
     dash_table.DataTable(
         id='position-table',
+        style_data={ 'border': '1px solid black' },
+        style_header={ 'border': '2px solid black' },
         columns=[
             {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
         ],
@@ -328,6 +330,8 @@ app.layout = html.Div([
     html.H2("Pitstops"),
     dash_table.DataTable(
         id='pitstop-table',
+        style_data={ 'border': '1px solid black' },
+        style_header={ 'border': '2px solid black' },
         columns=[
             {'name': str(col), 'id': str(col)} for col in ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']
         ],
@@ -344,7 +348,7 @@ app.layout = html.Div([
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
-
+    dcc.Graph(id='weather-plot'),
     html.H2("Samples"),
    dash_table.DataTable(
         id='samples-table',
@@ -354,7 +358,7 @@ app.layout = html.Div([
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
-    dcc.Graph(id='weather-plot'),
+    
 ])
 
 # Define callback to update the displayed scatter plot based on the selected table and columns
