@@ -288,7 +288,7 @@ app.layout = html.Div([
     ),
     dcc.Interval(
         id='pitstop-updater-component',
-        interval=5000,  # in milliseconds
+        interval=10000,  # in milliseconds
         n_intervals=0
     ),
     
@@ -642,7 +642,8 @@ def update_pitstop_table(n_intervals):
       return pd.DataFrame(columns = ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']).to_dict('records')
     
     query = f"select * from telemetry where ("
-    subquery1 = ''.join([f'''(driver_number = '{k[0]}' and lap_number = '{k[1]}') or ''' for k in pit_laps.keys()] )
+    # subquery1 = ''.join([f'''(driver_number = '{k[0]}' and lap_number = '{k[1]}') or ''' for k in pit_laps.keys()] )
+    subquery1 = ''.join([f'''(driver_number = '{k[0]}' and lap_number in ({k[1]}, {k[1]-1})) or ''' for k in pit_out_laps.keys()])
     query = query+ subquery1[:-3] + ')'
     df = pd.read_sql_query(query, engine)
     
