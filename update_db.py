@@ -89,6 +89,10 @@ for driver_code, driver_number in driver_config['driver_number'].items():
 #for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):
 st = race_start_time + timedelta(minutes=1)
 
+def smoothen(x):
+    from scipy.ndimage import gaussian_filter1d
+    return gaussian_filter1d(x, sigma=10)
+
 while True:
     et = st + timedelta(seconds=interval)
     print(st,et)
@@ -120,12 +124,17 @@ while True:
             continuity_counter = 0
             merged_data = pd.concat([pd.DataFrame({"actual_distance":[latest_distance[driver_code]]}), merged_data], ignore_index=True)[merged_data.columns]
             for ind in merged_data.index[1:]:
-                if merged_data.loc[ind, 'actual_distance'] - merged_data.loc[ind - (continuity_counter+1), 'actual_distance'] > 2000:
-                    merged_data.drop([ind], inplace=True)
-                    continuity_counter += 1
-                    print(f'Deleted {continuity_counter} datapoints in {driver_code}s Lap{lap_number[driver_code]}')
-                else:
-                    continuity_counter = 0
+                #Except at the end of circuit, the distance should not increase by more than 500m (worst case) and shouldn't decrese either ideally
+                if merged_data.loc[ind - (continuity_counter+1), 'actual_distance'] < 0.97*circuit_length:
+                    diff = merged_data.loc[ind, 'actual_distance'] - merged_data.loc[ind - (continuity_counter+1), 'actual_distance']
+                    if diff>500 or diff<-300:
+                        if continuity_counter == 0:
+                            in_time = merged_data.loc[ind, 'date']
+                        merged_data.drop([ind], inplace=True)
+                        continuity_counter += 1
+                    elif continuity_counter > 0:
+                        print(f'{continuity_counter} points deleted in {driver_code}\'s {lap_number[driver_code]} Lap, between {in_time} and {merged_data.loc[ind, "date"]}')
+                        continuity_counter = 0
             merged_data.reset_index(inplace=True,drop=True)
             merged_data['lap_number'] = utils.assign_lap_number(merged_data, lap_number[driver_code], circuit_length, latest_distance[driver_code])
             lap_number[driver_code] = merged_data.iloc[-1].lap_number

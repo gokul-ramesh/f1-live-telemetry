@@ -473,6 +473,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     # fig['layout']['yaxis6']['title']="Gear"
     fig.update_layout(uirevision=8, height=1400, width=1800, title_text=f'''{driver1.upper()} : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()}: {get_lap_dur(driver2_number,lap2_number)}s''')
     fig.update_xaxes(showticklabels=False)
+    fig.update_yaxes(minor=dict(tickvals=np.arange(0,350,10), tickmode='array', showgrid=True, ticks="inside"))
 
     return fig
 
