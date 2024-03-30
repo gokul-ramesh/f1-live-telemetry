@@ -320,7 +320,7 @@ app.layout = html.Div([
     dash_table.DataTable(
         id='position-table',
         columns=[
-            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','Latest', 'LatestBut1', 'LatestBut2']
+            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
         ],
         fill_width=False,
       # data = pd.DataFrame(columns = columns).to_dict('records')
@@ -677,7 +677,7 @@ def update_pitstop_table(n_intervals):
     for k,v in df_rest.iterrows():
       # print((v.driver_number, v.lap_number))
       if (v.driver_number, v.lap_number) in pit_laps.keys():
-          v['lap_number'] = pit_laps[(v.driver_number, v.lap_number)]
+          v['lap_number'] = int(pit_laps[(v.driver_number, v.lap_number)])
           data.append(v.T)
     # print(pit_laps.keys())
     # print('data len', len(data))
@@ -772,9 +772,9 @@ def update_position_table(n_intervals):
     else:
         latest[['Latest','LatestBut1','LatestBut2']] = latest.iloc[:,3:0:-1]
 
-    df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer')
+    df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer').rename(columns = ({'Latest': 'n', 'LatestBut1':'n-1', 'LatestBut2':'n-2'}))
 
-    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','Latest', 'LatestBut1', 'LatestBut2']].sort_values(by = 'position').to_dict('records')
+    return df[['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
     Output('track-location-plot', 'figure'),
