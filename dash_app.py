@@ -31,7 +31,7 @@ warnings.filterwarnings("ignore")
 
 #Session and circuit information
 
-TOTAL_LAPS = 75
+
 track_config = pd.read_csv('config/track_config.csv')
 pit_limit = 80
 
@@ -41,7 +41,7 @@ needed_session = sys.argv[3]
 
 track = track_config.query(f''' circuit_location == '{location}' ''')
 
-
+TOTAL_LAPS = int(track.total_laps.iloc[0])
 circuit_length = int(track.circuit_length.iloc[0])
 corners = eval(track.corners.iloc[0])
 start_line = eval(track.start_line.iloc[0])
@@ -273,22 +273,22 @@ app.layout = html.Div([
     ),
     dcc.Interval(
         id='maxspeed-updater-component',
-        interval=2000,  # in milliseconds
+        interval=5000,  # in milliseconds
         n_intervals=0
     ),
     dcc.Interval(
         id='position-updater-component',
-        interval=2000,  # in milliseconds
+        interval=5000,  # in milliseconds
         n_intervals=0
     ),
     dcc.Interval(
         id='track-location-updater-component',
-        interval=2000,  # in milliseconds
+        interval=5000,  # in milliseconds
         n_intervals=0
     ),
     dcc.Interval(
         id='pitstop-updater-component',
-        interval=5000,  # in milliseconds
+        interval=15000,  # in milliseconds
         n_intervals=0
     ),
     
@@ -636,6 +636,8 @@ def update_pitstop_table(n_intervals):
     pit_laps = {(v.driver_number, v.lap_number - 1):v.lap_number for k, v in df_laps.iterrows()}
     pit_laps.update(pit_out_laps)
 
+    # print(len(pit_out_laps))
+
     if len(pit_out_laps) == 0:
       return pd.DataFrame(columns = ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']).to_dict('records')
     
@@ -655,14 +657,15 @@ def update_pitstop_table(n_intervals):
     df_rest['date'] = pd.to_datetime(df_rest['date'], format = 'mixed')
     df_rest = df_rest.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp)).reset_index()
     df_rest['duration'] = df_rest['duration'].dt.total_seconds()
-    
+
     data = []
     for k,v in df_rest.iterrows():
         if (v.driver_number, v.lap_number) in pit_out_laps.keys():
             data.append(v.T)
-        df_rest = pd.concat(data, axis = 1).T
+    df_rest = pd.concat(data, axis = 1).T
     
-    df_merged = df_pit.merge(df_rest, on = ['driver_number', 'lap_number'], suffixes = ('_pit', '_rest'), how = 'outer').sort_values(by = ['driver_number', 'lap_number'])
+    df_merged = df_pit.merge(df_rest, on = ['driver_number', 'lap_number'], suffixes = ('_pit', '_rest'), how = 'inner').sort_values(by = ['driver_number', 'lap_number'])
+    # print(df_merged)
     
     merged_windows = pd.DataFrame({
         'out_lap_number': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: x.unique().tolist()),    
@@ -768,33 +771,15 @@ def update_track_location_plot(n_intervals):
         )
         for xi, yi, text in zip(df.x, df.y, df.driver_number.map(driver_config['driver_code']))
     ]'''
-    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500]) #, annotations = annotations)
+    yrange = [df_layout.y.min()-500,df_layout.y.max()+500]
+    xrange = [df_layout.x.min()-500,df_layout.x.max()+500]
+
+    # yscale = np.round((yrange[1] - yrange[0])/(xrange[1] - xrange[0]), 2)
+  
+    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=yrange, xaxis_range=xrange) #, annotations = annotations)
     figure = go.Figure(data=traces, layout=layout)
     return figure
     
-    # for k, v in df.sort_values(by = ['driver_order']).groupby('driver_order'):
-
-    #   text = v.driver_code.iloc[0]
-    #   xi = v.x.iloc[0]
-    #   yi = v.y.iloc[0]
-      
-    #   traces.append(go.Scatter(x=[xi], y=[yi], mode='markers', marker={'size': 18, 'color': f'{driver_config['team_colour'][driver_config['driver_code'][v.driver_number.iloc[0]]]}'}, name=f'{driver_config['driver_code'][v.driver_number.iloc[0]]}', text = text, textposition='top left'))
-    #       #                   text = dict(
-    #       #     x= xi + np.clip(500 * np.abs(xi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(xi),
-    #       #     y= yi + np.clip(500 * np.abs(yi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(yi),
-    #       #     text=text,
-    #       #     showarrow=False,
-    #       #     font=dict(
-    #       #         family= 'Arial',
-    #       #         size = 18,
-    #       #         color= f'{driver_config['team_colour'][text]}',
-    #       #      ), 
-    #       #     legendgroup = text,
-    #       # )
-      
-    # layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500])
-    # figure = go.Figure(data=traces, layout=layout)
-    # return figure
     
     
 @app.callback(
