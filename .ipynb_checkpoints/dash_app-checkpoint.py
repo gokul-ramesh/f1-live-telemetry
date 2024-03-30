@@ -288,7 +288,7 @@ app.layout = html.Div([
     ),
     dcc.Interval(
         id='pitstop-updater-component',
-        interval=15000,  # in milliseconds
+        interval=5000,  # in milliseconds
         n_intervals=0
     ),
     
@@ -646,22 +646,32 @@ def update_pitstop_table(n_intervals):
     query = query+ subquery1[:-3] + ')'
     df = pd.read_sql_query(query, engine)
     
-    df_pit = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < pit_limit + 1)] 
+    # df_pit = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < pit_limit + 1)] 
+    df_pit = df[(abs(df.distance_l2) < 500) & (df.speed < pit_limit + 1)] 
     df_pit['date'] = pd.to_datetime(df_pit['date'], format = 'mixed')
     df_pit = df_pit.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp), start_date = ('date', 'min'), end_date = ('date', 'max')).reset_index()
     df_pit['duration'] = df_pit['duration'].dt.total_seconds()
     df_pit['pit_lap_number'] = df_pit.apply(lambda x: pit_laps[(x.driver_number, x.lap_number)], axis = 1)
     df_pit = df_pit[['driver_number', 'pit_lap_number', 'duration']].groupby(['driver_number', 'pit_lap_number']).agg('sum').reset_index().rename(columns = {'pit_lap_number':'lap_number'}).round(3)
+    print('df_pit len', len(df_pit))
     
-    df_rest = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < 1)]
+    # df_rest = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < 1)]
+    df_rest = df[(abs(df.distance_l2) < 500) & (df.speed < 1)]
+    
     df_rest['date'] = pd.to_datetime(df_rest['date'], format = 'mixed')
     df_rest = df_rest.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp)).reset_index()
     df_rest['duration'] = df_rest['duration'].dt.total_seconds()
+    print('df_rest len', len(df_rest))
 
     data = []
+    
     for k,v in df_rest.iterrows():
-        if (v.driver_number, v.lap_number) in pit_out_laps.keys():
-            data.append(v.T)
+      # print((v.driver_number, v.lap_number))
+      if (v.driver_number, v.lap_number) in pit_laps.keys():
+          v['lap_number'] = pit_laps[(v.driver_number, v.lap_number)]
+          data.append(v.T)
+    # print(pit_laps.keys())
+    print('data len', len(data))
     df_rest = pd.concat(data, axis = 1).T
     
     df_merged = df_pit.merge(df_rest, on = ['driver_number', 'lap_number'], suffixes = ('_pit', '_rest'), how = 'inner').sort_values(by = ['driver_number', 'lap_number'])
