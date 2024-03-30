@@ -79,7 +79,7 @@ if os.path.isfile(db_file):
     os.remove(db_file)
     print(f"Removing older DB file {db_file}")
 print(f"Connecting to db using {db_file}")
-engine = create_engine(f"sqlite:///{db_file}")
+engine = create_engine(f"sqlite:///{db_file}", connect_args={'timeout': 20})
 
 lap_number,latest_distance = {}, {}
 for driver_code, driver_number in driver_config['driver_number'].items():
