@@ -31,7 +31,6 @@ warnings.filterwarnings("ignore")
 
 #Session and circuit information
 
-
 track_config = pd.read_csv('config/track_config.csv')
 pit_limit = 80
 
@@ -84,12 +83,6 @@ for name, color in driver_config['team_colour'].items():
   if driver_config['driver_number'][name] in [11, 18, 22, 23, 27, 31, 55, 63, 77, 81]:
     lines[driver_config['driver_number'][name]]['dash'] = 'dot'
 
-driver_symbol = {}
-for driver_no in driver_config['driver_number'].values():
-    if driver_no in [11, 18, 22, 23, 27, 31, 55, 63, 77, 81]:
-        driver_symbol[driver_no] = 'square'
-    else:
-        driver_symbol[driver_no] = 'circle'
 # driver_config_reverse = {v: k for k, v in driver_config.items()}
 
 def get_lap_dur(driv,lap):
@@ -636,8 +629,6 @@ def update_pitstop_table(n_intervals):
     pit_laps = {(v.driver_number, v.lap_number - 1):v.lap_number for k, v in df_laps.iterrows()}
     pit_laps.update(pit_out_laps)
 
-    # print(len(pit_out_laps))
-
     if len(pit_out_laps) == 0:
       return pd.DataFrame(columns = ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']).to_dict('records')
     
@@ -647,7 +638,7 @@ def update_pitstop_table(n_intervals):
     query = query+ subquery1[:-3] + ')'
     df = pd.read_sql_query(query, engine)
     
-    # df_pit = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < pit_limit + 1)] 
+    # df_pit = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < pit_limit + 1)]
     df_pit = df[(abs(df.distance_l2) < 500) & (df.speed < pit_limit + 1)] #works on monaco, other places?
     df_pit['date'] = pd.to_datetime(df_pit['date'], format = 'mixed')
     df_pit = df_pit.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp), start_date = ('date', 'min'), end_date = ('date', 'max')).reset_index()
@@ -655,17 +646,17 @@ def update_pitstop_table(n_intervals):
     df_pit['pit_lap_number'] = df_pit.apply(lambda x: pit_laps[(x.driver_number, x.lap_number)], axis = 1)
     df_pit = df_pit[['driver_number', 'pit_lap_number', 'duration']].groupby(['driver_number', 'pit_lap_number']).agg('sum').reset_index().rename(columns = {'pit_lap_number':'lap_number'}).round(3)
     print('df_pit len', len(df_pit))
-    
+
     # df_rest = df[((df.actual_distance < 500) | (df.actual_distance > circuit_length - 500)) & (df.speed < 1)]
     df_rest = df[(abs(df.distance_l2) < 500) & (df.speed < 1)] #works on monaco, other places?
-    
+
     df_rest['date'] = pd.to_datetime(df_rest['date'], format = 'mixed')
     df_rest = df_rest.groupby(['driver_number', 'lap_number']).agg(duration = ('date', np.ptp)).reset_index()
     df_rest['duration'] = df_rest['duration'].dt.total_seconds()
     print('df_rest len', len(df_rest))
 
     data = []
-    
+
     for k,v in df_rest.iterrows():
       # print((v.driver_number, v.lap_number))
       if (v.driver_number, v.lap_number) in pit_laps.keys():
@@ -738,7 +729,14 @@ def update_position_table(n_intervals):
         l = pd.concat([l, v[v.lap_number > max(v.lap_number) - 3].reset_index(drop=True).drop(columns=['lap_number'])])
     l.reset_index(inplace=True)
     latest = l.pivot(columns='index', values='lap_duration', index='driver_number').reset_index()
-    latest[['Latest','LatestBut1','LatestBut2']] = latest.iloc[:,:0:-1]
+    latest = latest.reindex(columns=latest.columns.to_list()+['Latest', 'LatestBut1', 'LatestBut2'], fill_value=np.nan)
+    if len(latest.columns) < 7:
+        if 1 in latest.columns:
+            latest[['Latest','LatestBut1']] = latest[[1,0]]
+        elif 0 in latest.columns:
+            latest['Latest'] = latest[0]
+    else:
+        latest[['Latest','LatestBut1','LatestBut2']] = latest.iloc[:,3:0:-1]
 
     df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer')
 
@@ -746,9 +744,18 @@ def update_position_table(n_intervals):
 
 @app.callback(
     Output('track-location-plot', 'figure'),
-    [Input('track-location-updater-component', 'n_intervals')]
+    [
+        Input('group-radiobuttons', 'value'),
+        Input('group1-buttons', 'value'),
+        Input('group2-buttons', 'value'),
+        Input('group3-buttons', 'value'),
+        Input('track-location-updater-component', 'n_intervals')]
 )
-def update_track_location_plot(n_intervals):
+def update_track_location_plot(group_name, group1, group2, group3, groupn_intervals):
+    team_groups.update({'G1': group1})
+    team_groups.update({'G2': group2})
+    team_groups.update({'G3': group3})
+    team_groups['ALL'] = driver_config['driver_number'].keys()
 
     # this query works with the assumption that all drivers get telemetry at the same timestamps (which is what we have observed)
     query = f"SELECT x, y, driver_number, date FROM telemetry where date = (select max(date) from telemetry) group by driver_number"
@@ -758,41 +765,24 @@ def update_track_location_plot(n_intervals):
     
     df_layout = pd.read_csv(f'track_layout/{location}-{year}.csv')
     traces = []
+    visibility = {driver_no: True if driver_code in team_groups[group_name] else "legendonly" for driver_code, driver_no in driver_config['driver_number'].items()}
     traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040', width = 3), hoverinfo='skip', showlegend=False))
     
     for k, v in df.sort_values(by = ['driver_order']).groupby('driver_order'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'], text=[f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'], textposition='top right', textfont=dict(color=f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'), mode='markers+text', marker={'size': 18, 'symbol': f"{driver_symbol[v.driver_number.iloc[0]]}", 'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'}, name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'))
+      traces.append(go.Scatter(x=v['x'], y=v['y'],
+                               text=[f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'],
+                               textposition='top right',
+                               textfont=dict(color=f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'),
+                               mode='markers+text',
+                               marker={'size': 18,'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'},
+                               name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}',
+                               legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}',
+                               visible=visibility[v.driver_number.iloc[0]]))
 
-    '''
-    annotations=[
-        dict(
-            x= xi + np.clip(500 * np.abs(xi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(xi),
-            y= yi + np.clip(500 * np.abs(yi)/(xi**2 + yi**2 + 1)**0.5, 200, 400) * np.sign(yi),
-            text=text,
-            showarrow=False,
-            font=dict(
-                family= 'Arial',
-                size = 18,
-                color= f'{driver_config["team_colour"][text]}',
-                # weight='bold'
-             ),  # Making the text bold
-            # legendgroup = text,
-            # xanchor='center',
-            # yanchor='bottom',
-        )
-        for xi, yi, text in zip(df.x, df.y, df.driver_number.map(driver_config['driver_code']))
-    ]'''
-    yrange = [df_layout.y.min()-500,df_layout.y.max()+500]
-    xrange = [df_layout.x.min()-500,df_layout.x.max()+500]
-
-    # yscale = np.round((yrange[1] - yrange[0])/(xrange[1] - xrange[0]), 2)
-  
-    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=yrange, xaxis_range=xrange) #, annotations = annotations)
+    layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500])
     figure = go.Figure(data=traces, layout=layout)
     return figure
-    
-    
-    
+
 @app.callback(
     Output('weather-plot', 'figure'),
     [Input('weather-updater-component', 'n_intervals')]
