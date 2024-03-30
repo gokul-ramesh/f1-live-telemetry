@@ -312,19 +312,23 @@ app.layout = html.Div([
           ),
 
     dcc.Graph(id='laptime-plot'),
+    html.Div([
+        html.Div([
+            dcc.Graph(id='track-location-plot')
+            ], style={'width': '49%', 'display': 'inline-block'}),
 
+        html.Div([
+            html.H2("Positions"),
+            dash_table.DataTable(
+                id='position-table',
+                columns=[
+                    {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
+                ],
+                fill_width=False,
+              # data = pd.DataFrame(columns = columns).to_dict('records')
+            )], style={'width': '49%', 'display': 'inline-block'}),
+        ], style={'display': 'flex'}),
 
-    dcc.Graph(id='track-location-plot'),
-
-    html.H2("Positions"),
-    dash_table.DataTable(
-        id='position-table',
-        columns=[
-            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
-        ],
-        fill_width=False,
-      # data = pd.DataFrame(columns = columns).to_dict('records')
-    ),
     html.H2("Pitstops"),
     dash_table.DataTable(
         id='pitstop-table',
@@ -687,7 +691,7 @@ def update_pitstop_table(n_intervals):
     # print(df_merged)
     
     # merged_windows = pd.DataFrame({
-    #     'out_lap_number': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: x.unique().tolist()),    
+    #     'out_lap_number': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: x.unique().tolist()),
     #     'duration_pit': df_merged.groupby(['driver_number'])['duration_pit'].agg(lambda x: x.unique().tolist()),
     #     'duration_rest': df_merged.groupby(['driver_number'])['duration_rest'].agg(lambda x: x.unique().tolist()),
     #     }).reset_index()
@@ -698,7 +702,7 @@ def update_pitstop_table(n_intervals):
 
     merged_windows = pd.DataFrame({
     'lap_number': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: (x.unique().astype(int).tolist())),
-    'pit_stops': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: len(x.unique())),    
+    'pit_stops': df_merged.groupby(['driver_number'])['lap_number'].agg(lambda x: len(x.unique())),
     'duration_pit': df_merged.groupby(['driver_number'])['duration_pit'].agg(lambda x: x.unique().round(2).tolist()),
     'duration_rest': df_merged.groupby(['driver_number'])['duration_rest'].agg(lambda x: x.unique().round(2).tolist()),
     }).reset_index()
