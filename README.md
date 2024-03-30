@@ -22,6 +22,7 @@
   
 
 ## Core logic 
+  - [ ] add gap to leader table
   - [ ] add lap number adjust logic
   - [x] Update lap number counter to add last recorded distance 
   - [x] ~~Optimize start line detection~~ Moved to config file
