@@ -363,7 +363,7 @@ app.layout = html.Div([
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
     
-])
+])])
 
 # Define callback to update the displayed scatter plot based on the selected table and columns
 @app.callback(
