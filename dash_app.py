@@ -312,25 +312,26 @@ app.layout = html.Div([
           ),
 
     dcc.Graph(id='laptime-plot'),
-    html.Div([
+    html.Div
+        ([
+        html.Div([
+            html.H2("Positions"),
+            dash_table.DataTable(
+            id='position-table',
+            style_data={ 'border': '1px solid black' },
+            style_header={ 'border': '2px solid black' },
+            columns=[
+                {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
+            ],
+            fill_width=False,
+            ),
+            ], style={'width': '49%', 'display': 'inline-block'}),
+
         html.Div([
             dcc.Graph(id='track-location-plot')
             ], style={'width': '49%', 'display': 'inline-block'}),
-
-
-    dcc.Graph(id='track-location-plot'),
-
-    html.H2("Positions"),
-    dash_table.DataTable(
-        id='position-table',
-        style_data={ 'border': '1px solid black' },
-        style_header={ 'border': '2px solid black' },
-        columns=[
-            {'name': col, 'id': col} for col in ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
-        ],
-        fill_width=False,
-      # data = pd.DataFrame(columns = columns).to_dict('records')
-    ),
+        ], style={'display': 'flex'},
+        ),
     html.H2("Pitstops"),
     dash_table.DataTable(
         id='pitstop-table',
@@ -363,7 +364,7 @@ app.layout = html.Div([
       # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
     
-])])
+])
 
 # Define callback to update the displayed scatter plot based on the selected table and columns
 @app.callback(
@@ -464,7 +465,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     for trace in drss:
         fig.add_trace(trace, row=1, col=1)
 
-    plot_list = ["Speed/DRS", "Live Delta", "Throttle", "Brake", "RPM", "Gear"]
+    plot_list = ["Speed/DRS", f"Live Delta<br><-- {driver2.upper()} faster | {driver1.upper()} faster -->", "Throttle", "Brake", "RPM", "Gear"]
     for i in range(6):
       if i == 0:
         fig['layout']['yaxis']['title']= plot_list[i]
