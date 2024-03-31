@@ -252,184 +252,123 @@ fuel_toggle_group = html.Div(
 
 # Define the layout of your app
 app.layout = html.Div([
-    html.H1(f"Laptime Comparison for Race {location}, {year}"),
 
-  # driver1_button_group,
-    dbc.Col(
-      [
-                dbc.Row([driver1_button_group]),
-                dbc.Row([lap1_button_group]),
-                dbc.Row([driver2_button_group]),
-                dbc.Row([lap2_button_group]),
-      ], align = 'left'
+    html.H1(f"Laptime Comparison for Race {location}, {year}"),
+    dbc.Col([
+            dbc.Row([driver1_button_group]),
+            dbc.Row([lap1_button_group]),
+            dbc.Row([driver2_button_group]),
+            dbc.Row([lap2_button_group]),
+        ], align = 'left',
     ),
     html.Button('Submit', id='telemetry-submit-value', n_clicks=0),
-  
-    dcc.Interval(
-        id='telemetry-updater-component',
-        interval=5000,  # in milliseconds
-        n_intervals=0
-    ),
-    dcc.Interval(
-        id='weather-updater-component',
-        interval=30000,  # in milliseconds
-        n_intervals=0
-    ),
-    dcc.Interval(
-        id='laptime-updater-component',
-        interval=10000,  # in milliseconds
-        n_intervals=0
-    ),
-    dcc.Interval(
-        id='maxspeed-updater-component',
-        interval=15000,  # in milliseconds
-        n_intervals=0
-    ),
-    dcc.Interval(
-        id='position-updater-component',
-        interval=5000,  # in milliseconds
-        n_intervals=0
-    ),
-    dcc.Interval(
-        id='track-location-updater-component',
-        interval=5000,  # in milliseconds
-        n_intervals=0
-    ),
-    dcc.Interval(
-        id='pitstop-updater-component',
-        interval=10000,  # in milliseconds
-        n_intervals=0
-    ),
-    dcc.Interval(
-        id='pitstop-formatting-updater-component',
-        interval=2000,  # in milliseconds
-        n_intervals=0
-    ),
+    dcc.Interval(id='telemetry-updater-component', interval=5000, n_intervals=0),
+    dcc.Interval(id='weather-updater-component', interval=30000, n_intervals=0),
+    dcc.Interval(id='laptime-updater-component', interval=10000, n_intervals=0),
+    dcc.Interval(id='race-control-updater-component', interval=10000, n_intervals=0),
+    dcc.Interval(id='maxspeed-updater-component', interval=15000, n_intervals=0),
+    dcc.Interval(id='position-updater-component', interval=5000, n_intervals=0),
+    dcc.Interval(id='track-location-updater-component', interval=5000, n_intervals=0),
+    dcc.Interval(id='pitstop-updater-component', interval=10000, n_intervals=0),
+    dcc.Interval(id='pitstop-formatting-updater-component', interval=2000, n_intervals=0),
     
-    
-    # Display scatter plot based on the selected table and columns
     dcc.Graph(id='scatter-plot'),
     dash_table.DataTable(
         id='corner-minspeed-table',
         style_data={ 'border': '1px solid black' },
         style_header={ 'border': '2px solid black', 'textAlign' : 'center'},
-        columns=[
-            {'name': str(col), 'id': str(col)} for col in ['driver_code'] + [*range(1, 1+len(corners))]
-        ],
+        columns=[{'name': str(col), 'id': str(col)} for col in ['driver_code'] + [*range(1, 1+len(corners))]],
         fill_width=False,
-      # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
 
-    dbc.Col(
-      [
-                dbc.Row([html.H5("Group 1"), group1_buttons]),
-                dbc.Row([html.H5("Group 2"), group2_buttons]),
-                dbc.Row([html.H5("Group 3"), group3_buttons]),
-      ], align = 'left'
+    dbc.Col([
+            dbc.Row([html.H5("Group 1"), group1_buttons]),
+            dbc.Row([html.H5("Group 2"), group2_buttons]),
+            dbc.Row([html.H5("Group 3"), group3_buttons]),
+        ], align = 'left',
     ),
-    dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 200),
-    dbc.Col(
-        [
-            dbc.Row([fuel_toggle_group]),
-        ], align = 'left'
-    ),
-    dbc.Col(
-            [
-              dbc.Row([group_button_group]),
-            ], align = 'left'
-          ),
-
+    dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 200,),
+    dbc.Col([dbc.Row([fuel_toggle_group])], align = 'left',),
+    dbc.Col([dbc.Row([group_button_group]),], align = 'left',),
     dcc.Graph(id='laptime-plot'),
-    html.Div
-        ([
+    
+    html.Div([
         html.Div([
             html.H2("Positions"),
             dash_table.DataTable(
-            id='position-table',
-            # data=df_position.to_dict('records'),
-            style_data={ 'border': '1px solid black' },
-            style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
-            # style_data_conditional=[
-            #     {
-            #         'if': {
-            #             'filter_query': '{{fastest}} = {}'.format(df_position['fastest'].min()),
-            #             'column_id': 'fastest'
-            #         },
-            #         'backgroundColor': '#FF00FF',
-            #         'color': 'white'
-            #     }],
-
-            style_cell_conditional=[
-                {
-                    'if': {'column_id': 'driver_code'}, 'textAlign': 'center'
-                },
-                {
-                    'if': {'column_id': 'position'}, 'textAlign': 'center'
-                },
-                {
-                    'if': {'column_id': 'lap_number'}, 'textAlign': 'center'
-                },
-                {
-                    'if': {'column_id': 'fastest'}, 'textAlign': 'center'
-                },
-                {
-                    'if': {'column_id': 'f_lap'}, 'textAlign': 'center'
-                },
-            ],
-            columns=[
-                {'name': col, 'id': col} for col in ['date', 'driver_code', 'position',  'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2']
-            ],
-            fill_width=False,
-            ),
-            ], style={'width': '49%', 'display': 'inline-block'}),
-
-        html.Div([
-            dcc.Graph(id='track-location-plot')
-            ], style={'width': '49%', 'display': 'inline-block'}),
-        ], style={'display': 'flex'},
+                id='position-table',
+                style_data={'border': '1px solid black',},
+                style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa',},
+                style_cell_conditional=[{'if': {'column_id': 'driver_code'}, 'textAlign': 'center',},   
+                                        {'if': {'column_id': 'position'}, 'textAlign': 'center',},
+                                        {'if': {'column_id': 'lap_number'}, 'textAlign': 'center',},
+                                        {'if': {'column_id': 'fastest'}, 'textAlign': 'center',},
+                                        {'if': {'column_id': 'f_lap'}, 'textAlign': 'center',},
+                                        ],
+                columns=[{'name': col, 'id': col} for col in ['date', 'driver_code', 'position',  'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2']],
+                fill_width=False,
+            ),], 
+            style={'width': '49%', 'display': 'inline-block'},
         ),
-    html.H2("Pitstops"),
-    dash_table.DataTable(
-        id='pitstop-table',
-        style_data={ 'border': '1px solid black' },
-        style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
-        style_cell_conditional=[{'if': {'column_id': 'driver_code'}, 'textAlign': 'center'}] +
-            [{'if': {'column_id': f'lap{i}'}, 'textAlign': 'center', 'backgroundColor' : '#cccccc'} for i in range(5)] + 
-            [{'if': {'column_id': f'pit{i}'}, 'textAlign': 'right',} for i in range(5)] +
-            [{'if': {'column_id': f'rest{i}'}, 'textAlign': 'right',} for i in range(5)],
-        columns=[
-            {'name': str(col), 'id': str(col)} for col in ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']
-        ],
-        fill_width=False,
-      # data = pd.DataFrame(columns = columns).to_dict('records')
+        html.Div([dcc.Graph(id='track-location-plot')], style={'width': '49%', 'display': 'inline-block'}),
+        ], style={'display': 'flex'},
     ),
+    
+        html.Div([
+        html.Div([
+            html.H2("Pitstops"),
+            dash_table.DataTable(
+                id='pitstop-table',
+                style_data={ 'border': '1px solid black' },
+                style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
+                style_cell_conditional=[{'if': {'column_id': 'driver_code'}, 'textAlign': 'center'}] +
+                    [{'if': {'column_id': f'lap{i}'}, 'textAlign': 'center', 'backgroundColor' : '#cccccc'} for i in range(5)] + 
+                    [{'if': {'column_id': f'pit{i}'}, 'textAlign': 'right',} for i in range(5)] +
+                    [{'if': {'column_id': f'rest{i}'}, 'textAlign': 'right',} for i in range(5)],
+                columns=[{'name': str(col), 'id': str(col)} for col in ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']],
+                fill_width=False,
+            ),
+        ], style={'width': '49%', 'display': 'inline-block'}),
+        html.Div([
+            html.H2("Race Control"),
+            dash_table.DataTable(
+                id='race-control-table',
+                filter_action="native",
+                style_data={ 'border': '1px solid black' },
+                style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
+                style_cell={'whiteSpace': 'normal'},
+                style_cell_conditional=[{'if': {'column_id': 'lap_number'}, 'textAlign': 'center'},
+                                        {'if': {'column_id': 'flag'}, 'textAlign': 'center'},
+                                        {'if': {'column_id': 'message'}, 'textAlign': 'left'}, ],
+                style_table={'maxHeight': '600px', 'maxWidth': '900px', 'overflowY': 'scroll'},
+                columns=[{'name': col, 'id': col} for col in ['date', 'lap_number', 'flag', 'message']],
+                fill_width=False,
+            ),
+        ], style={'width': '49%', 'display': 'inline-block'}),
+    ]),
 
     html.H2("Max Speed"),
-  dash_table.DataTable(
+    dash_table.DataTable(
         id='maxspeed-table',
-        style_data={ 'border': '1px solid black' },
+        style_data={ 'border': '1px solid black'},
         style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
         style_cell_conditional=[{'if': {'column_id': 'driver_code'}, 'textAlign': 'center'}],
-        columns=[
-            {'name': col, 'id': col} for col in columns
-        ],
+        columns=[{'name': col, 'id': col} for col in columns],
         fill_width=False,
-      # data = pd.DataFrame(columns = columns).to_dict('records')
     ),
+  
     dcc.Graph(id='weather-plot'),
     html.H2("Samples"),
-   dash_table.DataTable(
-        id='samples-table',
-        style_data={ 'border': '1px solid black' },
-        style_header={ 'border': '2px solid black', 'textAlign' : 'center'},
-        columns=[
-            {'name': col, 'id': col} for col in columns
-        ],
-        fill_width=False,
-      # data = pd.DataFrame(columns = columns).to_dict('records')
+    dash_table.DataTable(
+            id='samples-table',
+            style_data={ 'border': '1px solid black' },
+            style_header={ 'border': '2px solid black', 'textAlign' : 'center'},
+            columns=[{'name': col, 'id': col} for col in columns],
+            fill_width=False,
     ),
     
 ])
+
 
 # Define callback to update the displayed scatter plot based on the selected table and columns
 @app.callback(
@@ -654,7 +593,7 @@ def update_laptime_plot(group_name, laptime_threshold, is_corrected, group1, gro
 def update_maxspeed_columns(n_intervals):
     query = f"select max(lap_number) as max_lap_number from telemetry"
     df = pd.read_sql_query(query, engine)
-    columns = ['driver_code'] + [str(lap) for lap in range(0, 1 + df.iloc[0].max_lap_number)] 
+    columns = ['driver_code'] + [str(lap) for lap in range(0, 1 + df.iloc[0].max_lap_number)]
     columns = [{'name': col, 'id': col} for col in columns]
     # print(columns)
     return columns
@@ -666,7 +605,7 @@ def update_maxspeed_columns(n_intervals):
 def update_samples_columns(n_intervals):
     query = f"select max(lap_number) as max_lap_number from telemetry"
     df = pd.read_sql_query(query, engine)
-    columns = ['driver_code'] + [str(lap) for lap in range(0, 1 + df.iloc[0].max_lap_number)] 
+    columns = ['driver_code'] + [str(lap) for lap in range(0, 1 + df.iloc[0].max_lap_number)]
     columns = [{'name': col, 'id': col} for col in columns]
     # print(columns)
     return columns
@@ -694,6 +633,35 @@ def update_maxspeed_table(n_intervals):
     # layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     # figure = go.Figure(data=traces, layout=layout)
     return df_.sort_values(by = 'driver_order').to_dict('records')
+
+@app.callback(
+    Output('race-control-table', 'data'),
+    [Input('race-control-updater-component', 'n_intervals')]
+)
+def update_race_control_table(n_intervals):
+    # Replace this with your data update logic
+
+    query = f"select * from race_control"
+    df = pd.read_sql_query(query, engine)[['date', 'lap_number', 'flag', 'message']]
+    df['date'] = pd.to_datetime(df['date'], format='mixed').dt.time
+    return df.sort_values(by = 'date', ascending = False).to_dict('records')
+
+@app.callback(
+    Output('race-control-table', 'style_data_conditional'),
+    [Input('race-control-table','data'),
+     Input('race-control-updater-component', 'n_intervals')]
+)
+def update_race_control_style_data_conditional(data, n_intervals):
+
+    mapping = {'GREEN':'green', 'YELLOW':'yellow', 'DOUBLE YELLOW':"orange", 'CLEAR':'green', 'BLUE':'cyan', 'CHEQUERED':'light gray'}
+    df = pd.DataFrame(data).fillna(0)
+    conditional_styles = []
+    for i in range(len(df)):
+        flag = df.flag.iloc[i]
+        if flag in mapping.keys():
+            conditional_styles.append({'if': {'row_index': i}, 'backgroundColor': mapping[flag], 'color': 'black'})
+
+    return conditional_styles
 
 @app.callback(
     Output('maxspeed-table', 'style_data_conditional'),

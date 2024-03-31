@@ -142,6 +142,17 @@ def get_laptimes_data(session_key, start_time, end_time):
     return laptimes
   else:
     return pd.DataFrame()
+  
+def get_race_control_data(session_key, start_time, end_time):
+  url = f'''https://api.openf1.org/v1/race_control?&session_key={session_key}&date<{end_time}&date>={start_time}'''
+  race_control = get_data(url).drop_duplicates(subset = ['date', 'message'])
+  # print('race control data', len(race_control), url)
+  if len(race_control):
+    race_control['flag'] = race_control['flag'].apply(lambda x: '' if x is None else x)
+    race_control['date'] = pd.to_datetime(race_control['date'], format='mixed')
+    return race_control
+  else:
+    return pd.DataFrame()
 
 
 def merge_data_channels(car_data, location_data):
