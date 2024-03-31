@@ -661,6 +661,7 @@ def update_maxspeed_table(n_intervals):
     df_ = df_[sorted(df_.columns.tolist())].reset_index()
     df_['driver_code'] = df_.driver_number.map(driver_config['driver_code'])
     df_.columns = [str(x) for x in df_.columns]
+    df_['driver_order'] = df_.driver_code.map(driver_config['driver_order'])
     # print(df_.head(2))
 
     # traces = []
@@ -668,7 +669,7 @@ def update_maxspeed_table(n_intervals):
     #   traces.append(go.Scatter(x=v['lap_number'], y=v['lap_duration'], mode='markers+lines', name=f'{driver_config['driver_code'][int(k)]}'))
     # layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     # figure = go.Figure(data=traces, layout=layout)
-    return df_.to_dict('records')
+    return df_.sort_values(by = 'driver_order').to_dict('records')
 
 @app.callback(
     Output('maxspeed-table', 'style_data_conditional'),
@@ -946,6 +947,7 @@ def update_samples_table(n_intervals):
     df_.columns = [int(x) for x in df_.columns]
     df_ = df_[sorted(df_.columns.tolist())].reset_index()
     df_['driver_code'] = df_.driver_number.map(driver_config['driver_code'])
+    df_['driver_order'] = df_.driver_code.map(driver_config['driver_order'])
     df_.columns = [str(x) for x in df_.columns]
     # print(df_.head(2))
 
@@ -954,7 +956,7 @@ def update_samples_table(n_intervals):
     #   traces.append(go.Scatter(x=v['lap_number'], y=v['lap_duration'], mode='markers+lines', name=f'{driver_config['driver_code'][int(k)]}'))
     # layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     # figure = go.Figure(data=traces, layout=layout)
-    return df_.to_dict('records')
+    return df_.sort_values(by = 'driver_order').to_dict('records')
 
 @app.callback(
     Output('position-table', 'data'),

@@ -15,7 +15,7 @@ driver_number,name_acronym,team_name,team_colour,team_order,driver_order,team_ac
 20,MAG,Haas F1 Team,b6babd,7,14,Haas
 27,HUL,Haas F1 Team,b6babd,7,15,Haas
 24,ZHO,Kick Sauber,00e673,8,16,AR
-77,BOT,Kick Sauber,b6babd,8,17,AR
+77,BOT,Kick Sauber,00e673,8,17,AR
 2,SAR,Williams,64c4ff,9,18,Will
 23,ALB,Williams,64c4ff,9,19,Will
 10,GAS,Alpine,ff87bc,10,20,Alp
