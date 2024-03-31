@@ -372,11 +372,10 @@ app.layout = html.Div([
         id='pitstop-table',
         style_data={ 'border': '1px solid black' },
         style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
-        style_cell_conditional=[
-                {
-                    'if': {'column_id': 'driver_code'}, 'textAlign': 'center'
-                },
-            ],
+        style_cell_conditional=[{'if': {'column_id': 'driver_code'}, 'textAlign': 'center'}] +
+            [{'if': {'column_id': f'lap{i}'}, 'textAlign': 'center', 'backgroundColor' : '#cccccc'} for i in range(5)] + 
+            [{'if': {'column_id': f'pit{i}'}, 'textAlign': 'right',} for i in range(5)] +
+            [{'if': {'column_id': f'rest{i}'}, 'textAlign': 'right',} for i in range(5)],
         columns=[
             {'name': str(col), 'id': str(col)} for col in ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']
         ],
@@ -874,8 +873,8 @@ def update_pitstop_table(n_intervals):
     query = f"select * from laptimes"
     df_laps = pd.read_sql_query(query, engine).query("is_pit_out_lap == 'True'")[['driver_number', 'lap_number']].astype(int)
     df_laps = df_laps.sort_values(by = ['driver_number', 'lap_number'])
-    pit_out_laps = {(v.driver_number, v.lap_number):v.lap_number for k, v in df_laps.iterrows()}
-    pit_laps = {(v.driver_number, v.lap_number - 1):v.lap_number for k, v in df_laps.iterrows()}
+    pit_out_laps = {(v.driver_number, v.lap_number): int(v.lap_number) for k, v in df_laps.iterrows()}
+    pit_laps = {(v.driver_number, v.lap_number - 1): int(v.lap_number) for k, v in df_laps.iterrows()}
     pit_laps.update(pit_out_laps)
 
     if len(pit_out_laps) == 0:
@@ -916,6 +915,9 @@ def update_pitstop_table(n_intervals):
     df_rest = pd.concat(data, axis = 1).T
     
     df_merged = df_pit.merge(df_rest, on = ['driver_number', 'lap_number'], suffixes = ('_pit', '_rest'), how = 'inner').sort_values(by = ['driver_number', 'lap_number'])
+    df_merged.lap_number = df_merged.lap_number.astype(int)
+    df_merged.duration_pit = df_merged.duration_pit.round(2)
+    df_merged.duration_rest = df_merged.duration_rest.round(2)
     # print(df_merged)
     
     # merged_windows = pd.DataFrame({
@@ -937,13 +939,16 @@ def update_pitstop_table(n_intervals):
 
     merged_windows['driver_code'] = merged_windows.driver_number.map(driver_config['driver_code'])
 
+    # print(merged_windows)
+
     max_pits = max(merged_windows['pit_stops'])
     drivers = merged_windows['driver_code']
     laps = pd.DataFrame(merged_windows['lap_number'].to_list(), columns=[f'lap{i+1}' for i in range(max_pits)]).fillna('')
     pit_duration = pd.DataFrame(merged_windows['duration_pit'].to_list(), columns=[f'pit{i+1}' for i in range(max_pits)]).fillna('')
     rest_duration = pd.DataFrame(merged_windows['duration_rest'].to_list(), columns=[f'rest{i+1}' for i in range(max_pits)]).fillna('')
     merged_windows = pd.concat([drivers, laps, pit_duration, rest_duration], axis = 1)[['driver_code'] + [item for sublist in [[f'lap{i+1}', f'pit{i+1}', f'rest{i+1}'] for i in range(max_pits)] for item in sublist]]
-    return merged_windows.sort_values(by = [f'lap{i+1}' for i in range(max_pits)]).astype(str).to_dict('records')
+    # return merged_windows.sort_values(by = [f'lap{i+1}' for i in range(max_pits)]).astype(str).to_dict('records')
+    return merged_windows.sort_values(by = [f'lap{i+1}' for i in range(max_pits)]).to_dict('records')
 
 @app.callback(
     Output('samples-table', 'data'),
