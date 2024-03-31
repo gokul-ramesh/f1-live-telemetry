@@ -6,8 +6,8 @@ driver_number,name_acronym,team_name,team_colour,team_order,driver_order,team_ac
 55,SAI,Ferrari,e8002d,2,5,Fer
 4,NOR,McLaren,ff8000,3,6,McL
 81,PIA,McLaren,ff8000,3,7,McL
-44,HAM,Mercedes,27f4d2,4,8,Mer
-63,RUS,Mercedes,27f4d2,4,9,Mer
+44,HAM,Mercedes,0ac4a6,4,8,Mer
+63,RUS,Mercedes,0ac4a6,4,9,Mer
 14,ALO,Aston Martin,229971,5,10,AM
 18,STR,Aston Martin,229971,5,11,AM
 3,RIC,RB,6692ff,6,12,AT
