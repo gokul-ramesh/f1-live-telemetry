@@ -232,6 +232,22 @@ group_button_group = html.Div(
     className='radio-group',
 )
 
+fuel_toggle_group = html.Div(
+    [
+        dbc.RadioItems(
+            id="fuel-toggle-radiobuttons",
+            className="btn-group",
+            inputClassName="btn-check",
+            labelClassName="btn btn-outline-secondary",
+            labelCheckedClassName="active",
+                options=[{'label': html.Div([group[0]], style={'color':'Black', 'font-size':16, 'text-align':'center'}), 'value': group[1]} for group in [('Regular', 0), ('Corrected', 1)]],
+        value=0,
+        ),
+        html.Div(id='output'),
+    ],
+    className='radio-group',
+)
+
 # df_position = pd.DataFrame(columns = ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2'])
 
 # Define the layout of your app
@@ -312,6 +328,11 @@ app.layout = html.Div([
       ], align = 'left'
     ),
     dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 200),
+    dbc.Col(
+        [
+            dbc.Row([fuel_toggle_group]),
+        ], align = 'left'
+    ),
     dbc.Col(
             [
               dbc.Row([group_button_group]),
@@ -579,22 +600,26 @@ def update_corner_minspeed_table(driver1, lap1_number, driver2, lap2_number, n_c
     [
      Input('group-radiobuttons', 'value'),
      Input('laptime-threshold-input', 'value'),
+     Input('fuel-toggle-radiobuttons', 'value'),
      Input('group1-buttons', 'value'),
      Input('group2-buttons', 'value'),
      Input('group3-buttons', 'value'),
      Input('laptime-updater-component', 'n_intervals'),
      ]
 )
-def update_laptime_plot(group_name, laptime_threshold, group1, group2, group3, n_intervals):
+def update_laptime_plot(group_name, laptime_threshold, is_corrected, group1, group2, group3, n_intervals):
     # Replace this with your data update logic
+
+    def fuel_corrected_laptime(lap_duration, lap_number, TOTAL_LAPS, TOTAL_FUEL = 110, TIME_LOST_PER_KG = 0.035):
+        return lap_duration - (1 - lap_number/TOTAL_LAPS) * TOTAL_FUEL * TIME_LOST_PER_KG   
     
     team_groups.update({'G1':group1})
     team_groups.update({'G2':group2})
     team_groups.update({'G3':group3})
     team_groups['ALL'] = driver_config['driver_number'].keys()
     query = f"SELECT driver_number, lap_number, lap_duration FROM laptimes"
-    '''TODO'''
     df = pd.read_sql_query(query, engine).dropna().astype(float).query(f"lap_duration < {laptime_threshold}")
+    df['lap_duration_fuel_corrected'] = df.apply(lambda x: fuel_corrected_laptime(x.lap_duration, x.lap_number, TOTAL_LAPS), axis = 1)
     df['driver_order'] = df.driver_number.map(driver_config['driver_code']).map(driver_config['driver_order'])
 
     #df = get_data(f'https://api.openf1.org/v1/laps?session_key={session_key}')
@@ -614,9 +639,9 @@ def update_laptime_plot(group_name, laptime_threshold, group1, group2, group3, n
       v[['driver_number','lap_number']] = v[['driver_number','lap_number']].astype(int)
       v.set_index('lap_number', inplace=True)
       x = np.arange(1,max(v.index)+1)
-      y = [v['lap_duration'].loc[i] if float(i) in v.index.values else None for i in range(1,max(v.index)+1) ]
+      y = [v['lap_duration_fuel_corrected' if is_corrected == 1 else 'lap_duration'].loc[i] if float(i) in v.index.values else None for i in range(1,max(v.index)+1) ]
       traces.append(go.Scatter(x=x, y=y, mode='markers+lines', name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', line=lines[v.driver_number.iloc[0]], visible=visibility[v.driver_number.iloc[0]]))
-    layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8, modebar_add=["v1hovermode","toggleSpikelines",])
+    layout = go.Layout(title = 'Fuel Corrected Laptimes' if is_corrected == 1 else 'Regular Laptimes', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8, modebar_add=["v1hovermode","toggleSpikelines",])
     figure = go.Figure(data=traces, layout=layout)
 
     #figure.update_traces(visible='legendonly', selector=dict(name=team_groups[groups][0]))
