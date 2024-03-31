@@ -266,7 +266,7 @@ app.layout = html.Div([
     ),
     dcc.Interval(
         id='maxspeed-updater-component',
-        interval=15000,  # in milliseconds
+        interval=5000,  # in milliseconds
         n_intervals=0
     ),
     dcc.Interval(
@@ -679,21 +679,32 @@ def update_maxspeed_table(n_intervals):
 def update_maxspeed_style_data_conditional(data, n_intervals):
 
     def get_color(x):
-        # return np.clip(127 + int(128 * x/30), 127, 255)
-        return np.clip((64 + 172 * (x - 250)/100), 0, 224)
+        if x is None:
+            return 0
+        else:
+            return np.clip((64 + 172 * (int(x) - 250)/100), 0, 224)
 
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data).fillna(0)
 
     query = f"select driver_number, lap_number, max(drs) as max_drs from telemetry group by driver_number, lap_number"
     df_ = pd.read_sql_query(query, engine).astype(int)
     df_ = df_.pivot(columns = 'lap_number', index = 'driver_number', values = 'max_drs').round(0).fillna(0) >= 10
-    # print(df_.columns)
-    conditional_styles = []
+    df_ = df_.reset_index()
+    
 
+    df_['driver_code'] = df_.driver_number.map(driver_config['driver_code'])
+    df_['driver_order'] = df_.driver_code.map(driver_config['driver_order'])
+
+    df['driver_code'] = df.driver_number.map(driver_config['driver_code'])
+    df['driver_order'] = df.driver_code.map(driver_config['driver_order'])
+
+    df_ = df_.sort_values(by = 'driver_order')
+    df = df.sort_values(by = 'driver_order')
+    conditional_styles = []
 
     for i in range(len(data)):
         conditional_styles.append({'if': {'column_id': 'driver_code', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
-        conditional_styles += [{'if': {'column_id': str(column), 'row_index': i}, 'border': '3px solid yellow', 'color' : 'white', 'backgroundColor': f'rgb({get_color(df[str(column)].iloc[i])}, 0, 0, 1)' }if df_[column].iloc[i] == 1 else {'if': {'column_id': str(column), 'row_index': i}, 'color' : 'white', 'backgroundColor': f'rgb({get_color(df[str(column)].iloc[i])}, 0, 0, 1'} for column in df_.columns]
+        conditional_styles += [{'if': {'column_id': str(column), 'row_index': i}, 'border': '3px solid yellow', 'color' : 'white', 'backgroundColor': f'rgb({get_color(df[str(column)].iloc[i])}, 0, 0, 1)' }if df_[column].iloc[i] == 1 else {'if': {'column_id': str(column), 'row_index': i}, 'color' : 'white', 'backgroundColor': f'rgb({get_color(df[str(column)].iloc[i])}, 0, 0, 1'} for column in df_.columns[1:-2]]
     # print(int(x) for x in df.columns[:-2])
     # conditional_styles += [{'if': {'filter_query': '{%s} > 330' % column, 'column_id': column}, 'border': '5px solid red'}  for column in df.columns[:-2]]
 

@@ -9,6 +9,7 @@
   - [x] Submit button
   
 ### Laptimes plot 
+  - [ ] fix live laptimes fetch
   - [ ] toggle laptimes by teams, useful for car level comparison
   - [x] add filter button 
 ### Telemetry plot 
