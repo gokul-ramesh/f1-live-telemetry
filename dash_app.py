@@ -266,7 +266,7 @@ app.layout = html.Div([
     ),
     dcc.Interval(
         id='maxspeed-updater-component',
-        interval=5000,  # in milliseconds
+        interval=15000,  # in milliseconds
         n_intervals=0
     ),
     dcc.Interval(
