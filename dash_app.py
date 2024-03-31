@@ -295,6 +295,8 @@ app.layout = html.Div([
     dcc.Graph(id='scatter-plot'),
     dash_table.DataTable(
         id='corner-minspeed-table',
+        style_data={ 'border': '1px solid black' },
+        style_header={ 'border': '2px solid black', 'textAlign' : 'center'},
         columns=[
             {'name': str(col), 'id': str(col)} for col in ['driver_code'] + [*range(1, 1+len(corners))]
         ],
@@ -325,7 +327,7 @@ app.layout = html.Div([
             id='position-table',
             # data=df_position.to_dict('records'),
             style_data={ 'border': '1px solid black' },
-            style_header={ 'border': '2px solid black' },
+            style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
             # style_data_conditional=[
             #     {
             #         'if': {
@@ -346,9 +348,9 @@ app.layout = html.Div([
                 {
                     'if': {'column_id': 'lap_number'}, 'textAlign': 'center'
                 },
-                # {
-                #     'if': {'column_id': 'fastest'}, 'textAlign': 'center'
-                # },
+                {
+                    'if': {'column_id': 'fastest'}, 'textAlign': 'center'
+                },
                 {
                     'if': {'column_id': 'f_lap'}, 'textAlign': 'center'
                 },
@@ -369,7 +371,7 @@ app.layout = html.Div([
     dash_table.DataTable(
         id='pitstop-table',
         style_data={ 'border': '1px solid black' },
-        style_header={ 'border': '2px solid black' },
+        style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
         columns=[
             {'name': str(col), 'id': str(col)} for col in ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']
         ],
@@ -380,6 +382,9 @@ app.layout = html.Div([
     html.H2("Max Speed"),
   dash_table.DataTable(
         id='maxspeed-table',
+        style_data={ 'border': '1px solid black' },
+        style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
+        style_cell_conditional=[{'if': {'column_id': 'driver_code'}, 'textAlign': 'center'}],
         columns=[
             {'name': col, 'id': col} for col in columns
         ],
@@ -390,6 +395,8 @@ app.layout = html.Div([
     html.H2("Samples"),
    dash_table.DataTable(
         id='samples-table',
+        style_data={ 'border': '1px solid black' },
+        style_header={ 'border': '2px solid black', 'textAlign' : 'center'},
         columns=[
             {'name': col, 'id': col} for col in columns
         ],
@@ -643,7 +650,7 @@ def update_maxspeed_table(n_intervals):
     # Replace this with your data update logic
 
     query = f"select driver_number, lap_number, max(speed) as max_speed from telemetry group by driver_number, lap_number"
-    df = pd.read_sql_query(query, engine)
+    df = pd.read_sql_query(query, engine).astype(int)
     df_ = df.pivot(columns = 'lap_number', index = 'driver_number', values = 'max_speed').round(0)
     df_.columns = [int(x) for x in df_.columns]
     df_ = df_[sorted(df_.columns.tolist())].reset_index()
@@ -657,6 +664,30 @@ def update_maxspeed_table(n_intervals):
     # layout = go.Layout(title = f'''Laptime Data''', xaxis=dict(title='Lap Number'), yaxis=dict(title='Time'), uirevision = 8)
     # figure = go.Figure(data=traces, layout=layout)
     return df_.to_dict('records')
+
+@app.callback(
+    Output('maxspeed-table', 'style_data_conditional'),
+    [Input('maxspeed-table','data'),
+     Input('maxspeed-updater-component', 'n_intervals')]
+)
+def update_maxspeed_style_data_conditional(data, n_intervals):
+
+    def get_color(x):
+        # return np.clip(127 + int(128 * x/30), 127, 255)
+        return np.clip((255 - 128 * x/30), 0, 255)
+
+    df = pd.DataFrame(data)
+    # fastest_lap = df.fastest.min()
+    # print(df.set_index('driver_code').flatten().min(), df.set_index('driver_code').flatten().max(), df.set_index('driver_code').flatten().mean(), df.set_index('driver_code').flatten().std())
+    conditional_styles = []
+
+    for i in range(len(data)):
+        conditional_styles.append({'if': {'column_id': 'driver_code', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
+    print(df.columns[:-2])
+    conditional_styles += [{'if': {'filter_query': '{%s} > 330' % column, 'column_id': column}, 'border': '5px solid red'}  for column in df.columns[:-2]]
+
+    return conditional_styles
+
 
 @app.callback(
     Output('pitstop-table', 'columns'),
