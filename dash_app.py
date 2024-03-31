@@ -372,6 +372,11 @@ app.layout = html.Div([
         id='pitstop-table',
         style_data={ 'border': '1px solid black' },
         style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
+        style_cell_conditional=[
+                {
+                    'if': {'column_id': 'driver_code'}, 'textAlign': 'center'
+                },
+            ],
         columns=[
             {'name': str(col), 'id': str(col)} for col in ['driver_code', 'out_lap_number', 'duration_pit', 'duration_rest']
         ],
@@ -821,6 +826,31 @@ def update_position_style_data_conditional(data, n_intervals):
     #         #     'backgroundColor': '#00cc44', 'color': 'black',
     #         # } for fastest in df['fastest']
     #         # ]             
+
+@app.callback(
+    Output('pitstop-table', 'style_data_conditional'),
+    [Input('pitstop-table','data'),
+     Input('pitstop-updater-component', 'n_intervals')]
+)
+def update_pitstop_style_data_conditional(data, n_intervals):
+
+    # def get_color(x):
+    #     # return np.clip(127 + int(128 * x/30), 127, 255)
+    #     return np.clip((255 - 128 * x/30), 0, 255)
+
+    df = pd.DataFrame(data)
+    conditional_styles = []
+
+    for i in range(len(data)):
+        conditional_styles.append({'if': {'column_id': 'driver_code', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
+            
+    # conditional_styles.append({'if': { 'filter_query': '{{fastest}} = {}'.format(fastest_lap), 'column_id': 'fastest'}, 'backgroundColor': '#ff66cc', 'color': 'black'})
+    # conditional_styles.append({'if': { 'filter_query': '{{n}} = {}'.format(fastest_lap), 'column_id': 'n'}, 'backgroundColor': '#ff66cc', 'color': 'black',})
+    # conditional_styles.append({'if': { 'filter_query': '{{n-1}} = {}'.format(fastest_lap), 'column_id': 'n-1'}, 'backgroundColor': '#ff66cc', 'color': 'black',})
+    # conditional_styles.append({'if': { 'filter_query': '{{n-2}} = {}'.format(fastest_lap), 'column_id': 'n-2'}, 'backgroundColor': '#ff66cc', 'color': 'black',})
+    
+    return conditional_styles
+    # return None
 
 @app.callback(
     Output('pitstop-table', 'data'),
