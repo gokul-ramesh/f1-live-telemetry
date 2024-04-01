@@ -653,13 +653,17 @@ def update_race_control_table(n_intervals):
 )
 def update_race_control_style_data_conditional(data, n_intervals):
 
-    mapping = {'GREEN':'green', 'YELLOW':'yellow', 'DOUBLE YELLOW':"orange", 'CLEAR':'green', 'BLUE':'cyan', 'CHEQUERED':'light gray'}
+    mapping = {'GREEN':'green', 'YELLOW':'yellow', 'RED':'red', 'DOUBLE YELLOW':"orange", 'CLEAR':'green', 'BLUE':'cyan', 'CHEQUERED':'gray'}
     df = pd.DataFrame(data).fillna(0)
     conditional_styles = []
     for i in range(len(df)):
         flag = df.flag.iloc[i]
+        message = df.message.iloc[i]
+        if any(x in message for x in ['INVESTIGATION', 'NOTED', 'PENALTY']):
+            conditional_styles.append({'if': {'row_index': i}, 'backgroundColor': '#3366ff', 'color': 'white'})
         if flag in mapping.keys():
             conditional_styles.append({'if': {'row_index': i}, 'backgroundColor': mapping[flag], 'color': 'black'})
+        
 
     return conditional_styles
 
