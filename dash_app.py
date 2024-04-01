@@ -333,7 +333,7 @@ app.layout = html.Div([
             html.H2("Race Control"),
             dash_table.DataTable(
                 id='race-control-table',
-                filter_action="native",
+                # filter_action="native",
                 style_data={ 'border': '1px solid black' },
                 style_header={ 'border': '2px solid black', 'textAlign' : 'center', 'backgroundColor' : '#aaaaaa'},
                 style_cell={'whiteSpace': 'normal'},
@@ -729,9 +729,13 @@ def update_position_style_data_conditional(data, n_intervals):
     def get_color(x):
         # return np.clip(127 + int(128 * x/30), 127, 255)
         return np.clip((255 - 128 * x/30), 0, 255)
+    
+    def get_color_2(x):
+        return np.clip((255 - 32 * x), 128, 255)
 
     df = pd.DataFrame(data)
     fastest_lap = df.fastest.min()
+    current_lap = df.lap_number.max()
     conditional_styles = []
 
     for i in range(len(data)):
@@ -751,10 +755,11 @@ def update_position_style_data_conditional(data, n_intervals):
             conditional_styles.append({'if': {'column_id': 'n-2', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'black',})
 
         color = get_color(df['lap_number'][i] - df['f_lap'][i])
+        color_2 = get_color_2(current_lap - df['lap_number'][i])
         conditional_styles.append({'if': {'column_id': 'f_lap', 'row_index': i}, 'backgroundColor': f'''rgba({color}, {color}, {color}, 1)''', 'color': 'black'})
         conditional_styles.append({'if': {'column_id': 'driver_code', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
         conditional_styles.append({'if': {'column_id': 'date', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
-        conditional_styles.append({'if': {'column_id': 'lap_number', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
+        conditional_styles.append({'if': {'column_id': 'lap_number', 'row_index': i}, 'backgroundColor': f'''rgba({color_2}, {color_2}, {color_2}, 1)''', 'color': 'black'})
         conditional_styles.append({'if': {'column_id': 'position', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
 
 
