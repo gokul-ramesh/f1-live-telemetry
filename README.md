@@ -1,7 +1,8 @@
 # To do 
 
 ## Dash app 
-  - [ ] race control table 
+  - [ ] filter out blue flags in race control table?
+  - [x] race control table 
   - [ ] add team radio table 
   - [x] LAP NUMBER IN TELEMETRY & LAPTIMES ARE OFFSET BY 1(nth lap in laptimes is ahead in time compared to telemtry) - update_db_historical.py Line 88, Assign [0,0]
   - [ ] organise plot layouts
@@ -20,11 +21,12 @@
   - [x] replace drop down with buttons 
   - [x] Differentiate drivers from same team 
 ### Tables 
-  - [ ] Conditional formatting for different tables
+  - [x] Conditional formatting for different tables
   - [ ] improve table ui
   
 
 ## Core logic 
+  - [ ] memoise dash computations [link](https://dash.plotly.com/performance?_gl=1*bwwu1h*_ga*MTY4MDMyMDc1LjE3MTA3MDg3MDE.*_ga_6G7EE0JNSC*MTcxMTkzMDIzMC4zNS4xLjE3MTE5MzAzMzIuNTQuMC4w)
   - [ ] add gap to leader table
   - [ ] add lap number adjust logic
   - [x] Update lap number counter to add last recorded distance 
