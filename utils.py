@@ -137,6 +137,7 @@ def get_position_data(session_key, end_time):
 def get_laptimes_data(session_key, start_time, end_time):
   url = f'''https://api.openf1.org/v1/laps?&session_key={session_key}&date_start<{end_time}&date_start>={start_time}'''
   laptimes = get_data(url)
+  laptimes.dropna(inplace=True)
   if len(laptimes):
     # laptimes['date_start'] = pd.to_datetime(laptimes['date_start'], format='ISO8601')
     return laptimes

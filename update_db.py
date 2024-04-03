@@ -101,13 +101,13 @@ while True:
 
     t1 = time.time()
     weather_data = utils.get_weather_data(session_key_race, st, et)
-    laptimes_data = utils.get_laptimes_data(session_key_race, st, et)
+    laptimes_data = utils.get_laptimes_data(session_key_race, race_start_time, et)
     race_control_data = utils.get_race_control_data(session_key_race, st, et)
     position_data = utils.get_position_data(session_key_race, et)
     if len(weather_data):
       weather_data.map(str).to_sql('weather', engine, if_exists='append', index=False)
     if len(laptimes_data):
-      laptimes_data.map(str).to_sql('laptimes', engine, if_exists='append', index=False)
+      laptimes_data.map(str).to_sql('laptimes', engine, if_exists='replace', index=False)
     if len(position_data):
       position_data.map(str).to_sql('position', engine, if_exists='replace', index=False)
     if len(race_control_data):
