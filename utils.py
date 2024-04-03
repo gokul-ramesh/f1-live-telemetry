@@ -123,10 +123,18 @@ def get_weather_data(session_key, start_time, end_time):
   else:
     return pd.DataFrame()
 
-def get_position_data(session_key, end_time):
+def get_position_data(session_key, end_time, engine):
   url = f'''https://api.openf1.org/v1/position?session_key={session_key}&date<={end_time}'''
   position = get_data(url)
   position = position[['driver_number', 'date', 'position']].groupby('driver_number').agg('last').reset_index()
+  tminustime = end_time - timedelta(seconds=10)
+  url = f'''https://api.openf1.org/v1/intervals?session_key={session_key}&date<={end_time}&date>={tminustime}'''
+  intervals = get_data(url)
+  if not len(intervals):
+    intervals = pd.read_sql_query('select gap_to_leader, interval, cast(driver_number as int) as driver_number from position', engine)
+  intervals = intervals[['gap_to_leader', 'interval', 'driver_number']].groupby('driver_number').agg('last').reset_index()
+  position = position.merge(intervals, on='driver_number', how='outer')
+
   if len(position):
     # weather['date'] = pd.to_datetime(weather['date'], format='ISO8601')
     return position

@@ -287,9 +287,12 @@ app.layout = html.Div([
             dbc.Row([html.H5("Group 3"), group3_buttons]),
         ], align = 'left',
     ),
-    dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size = '5px', step=1, value = 200,),
-    dbc.Col([dbc.Row([fuel_toggle_group])], align = 'left',),
-    dbc.Col([dbc.Row([group_button_group]),], align = 'left',),
+    html.Br(),
+    dbc.Row([
+        dbc.Col([group_button_group], align='left', ),
+        dbc.Col(["Lap Time Threshold", dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size='5px', step=1, value = 200, style={'width':'20%'}),], align='right', ),
+        dbc.Col([fuel_toggle_group], align='right', ),
+    ]),
     dcc.Graph(id='laptime-plot'),
     
     html.Div([
@@ -305,7 +308,7 @@ app.layout = html.Div([
                                         {'if': {'column_id': 'fastest'}, 'textAlign': 'center',},
                                         {'if': {'column_id': 'f_lap'}, 'textAlign': 'center',},
                                         ],
-                columns=[{'name': col, 'id': col} for col in ['date', 'driver_code', 'position',  'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2']],
+                columns=[{'name': col, 'id': col} for col in ['date', 'driver_code', 'position',  'gap', 'interval', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2']],
                 fill_width=False,
             ),], 
             style={'width': '49%', 'display': 'inline-block'},
@@ -765,7 +768,8 @@ def update_position_style_data_conditional(data, n_intervals):
         conditional_styles.append({'if': {'column_id': 'date', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
         conditional_styles.append({'if': {'column_id': 'lap_number', 'row_index': i}, 'backgroundColor': f'''rgba({color_2}, {color_2}, {color_2}, 1)''', 'color': 'black'})
         conditional_styles.append({'if': {'column_id': 'position', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
-
+        if float(df['interval'][i]) < 1.0:
+            conditional_styles.append({'if': {'column_id': 'interval', 'row_index':i}, 'backgroundColor':'#00cc44', 'color': 'black'})
 
     
         # style_data_conditional = [{'if': {'column_id': x, 'row_index': y},
@@ -988,6 +992,7 @@ def update_position_table(n_intervals):
     df[['driver_number', 'position']] = df[['driver_number', 'position']].astype(int)
     df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
     df['date'] = pd.to_datetime(df['date'], format='mixed').dt.strftime('%H:%M:%S')
+    df[['gap', 'interval']] = df[['gap_to_leader', 'interval']]
 
 
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
@@ -1014,7 +1019,7 @@ def update_position_table(n_intervals):
 
     df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer').rename(columns = ({'Latest': 'n', 'LatestBut1':'n-1', 'LatestBut2':'n-2'}))
 
-    return df[['date', 'driver_code', 'position', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2']].sort_values(by = 'position').to_dict('records')
+    return df[['date', 'driver_code', 'position', 'gap', 'interval', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
     Output('track-location-plot', 'figure'),
