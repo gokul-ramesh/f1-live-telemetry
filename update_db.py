@@ -104,7 +104,8 @@ while True:
     weather_data = utils.get_weather_data(session_key_race, st, et)
     laptimes_data = utils.get_laptimes_data(session_key_race, race_start_time, et)
     race_control_data = utils.get_race_control_data(session_key_race, st, et)
-    position_data = utils.get_position_data(session_key_race, et, engine)
+    position_data = utils.get_position_data(session_key_race, et)
+    interval_data = utils.get_interval_data(session_key_race, st, et)
     if len(weather_data):
       weather_data.map(str).to_sql('weather', engine, if_exists='append', index=False)
     if len(laptimes_data):
@@ -113,6 +114,8 @@ while True:
       position_data.map(str).to_sql('position', engine, if_exists='replace', index=False)
     if len(race_control_data):
       race_control_data.map(str).to_sql('race_control', engine, if_exists='append', index=False)      
+    if len(interval_data):
+          interval_data.map(str).to_sql('interval', engine, if_exists='append', index=False)
 
     car_data, location_data = utils.get_data_channels({'start_time': st, 'end_time': et, 'session_key': session_key_race})
     telemetry_data = pd.DataFrame()
