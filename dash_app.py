@@ -1,6 +1,6 @@
 # Import necessary libraries
 import dash
-from dash import html, dcc, dash_table
+from dash import html, dcc, dash_table, ctx, callback_context
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 from dash import dash_table
@@ -248,6 +248,23 @@ fuel_toggle_group = html.Div(
     className='radio-group',
 )
 
+latest_tele_toggle_group = html.Div(
+    [
+        dbc.RadioItems(
+            id="latest-tele-toggle-radiobuttons",
+            className="btn-group",
+            inputClassName="btn-check",
+            labelClassName="btn btn-outline-secondary",
+            labelCheckedClassName="active",
+                options=[{'label': html.Div([group[0]], style={'color':'Black', 'font-size':16, 'text-align':'center'}), 'value': group[1]} for group in [('Selection', 0), ('Latest', 1)]],
+        value=0,
+        ),
+        html.Div(id='output'),
+    ],
+    className='radio-group',
+)
+
+
 # df_position = pd.DataFrame(columns = ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2'])
 
 # Define the layout of your app
@@ -262,6 +279,12 @@ app.layout = html.Div([
         ], align = 'left',
     ),
     html.Button('Submit', id='telemetry-submit-value', n_clicks=0),
+    html.Button('Previous', id='telemetry-prev-value', n_clicks=0),
+    html.Button('Next', id='telemetry-next-value', n_clicks=0),
+    dbc.Col([
+        dbc.Row([latest_tele_toggle_group]),
+    ]),
+    #html.Button('Latest', id='telemetry-latest-value', n_clicks=0),
     dcc.Interval(id='telemetry-updater-component', interval=5000, n_intervals=0),
     dcc.Interval(id='weather-updater-component', interval=30000, n_intervals=0),
     dcc.Interval(id='laptime-updater-component', interval=10000, n_intervals=0),
@@ -381,9 +404,14 @@ app.layout = html.Div([
      State('driver2-radiobuttons', 'value'),
      State('lap2-radiobuttons', 'value'),
      Input('telemetry-submit-value', 'n_clicks'),
-     Input('telemetry-updater-component', 'n_intervals')]
+     Input('telemetry-updater-component', 'n_intervals'),
+     Input('telemetry-prev-value', 'n_clicks'),
+     Input('telemetry-next-value', 'n_clicks'),
+     Input('latest-tele-toggle-radiobuttons', 'value'),
+     ]
 )
-def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_intervals):
+def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_intervals, prev, next, latest):
+
     driver1_number = driver_config['driver_number'][driver1.upper()]
     driver2_number = driver_config['driver_number'][driver2.upper()]
     query = f"SELECT * FROM telemetry WHERE ((driver_number = '{driver1_number}' and lap_number = '{lap1_number}') or (driver_number = '{driver2_number}' and lap_number = '{lap2_number}'));"
@@ -492,6 +520,40 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     fig.update_yaxes(minor=dict(tickvals=np.arange(0,350,10), tickmode='array', showgrid=True, ticks="inside"))
 
     return fig
+
+@app.callback([
+    Output('lap1-radiobuttons', 'value'),
+    Output('lap2-radiobuttons', 'value'),],
+   [
+     State('driver1-radiobuttons', 'value'),
+     State('driver2-radiobuttons', 'value'),
+     State('lap1-radiobuttons', 'value'),
+     State('lap2-radiobuttons', 'value'),
+     Input('telemetry-prev-value', 'n_clicks'),
+     Input('telemetry-next-value', 'n_clicks'),
+     Input('latest-tele-toggle-radiobuttons', 'value'),
+     Input('telemetry-updater-component', 'n_intervals')]
+)
+def update_lap_number(driver1, driver2, lap1, lap2, prev, next, latest, n_intervals):
+    ctx = callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if latest==1:
+        query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
+        df_laps = pd.read_sql_query(query, engine)
+        return df_laps[df_laps['driver_number']==driver_config['driver_number'][driver1.upper()]].iloc[0,1], df_laps[df_laps['driver_number']==driver_config['driver_number'][driver2.upper()]].iloc[0,1]
+    elif latest==0:
+        if button_id == 'telemetry-prev-value':
+            if lap1 == 1:
+                lap1 = TOTAL_LAPS + 1
+            if lap2 == 1:
+                lap2 = TOTAL_LAPS + 1
+            return lap1 - 1, lap2 - 1
+        elif button_id == 'telemetry-next-value':
+            return (lap1 % TOTAL_LAPS) + 1, (lap2 % TOTAL_LAPS) + 1
+        else:
+            return lap1, lap2
+
 
 # Define callback to update the displayed scatter plot based on the selected table and columns
 @app.callback(
@@ -770,6 +832,8 @@ def update_position_style_data_conditional(data, n_intervals):
         conditional_styles.append({'if': {'column_id': 'position', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
         if float(df['interval'][i]) < 1.0:
             conditional_styles.append({'if': {'column_id': 'interval', 'row_index':i}, 'backgroundColor':'#00cc44', 'color': 'black'})
+        elif float(df['interval'][i]) > 1.0 and float(df['interval'][i]) < 2.0:
+            conditional_styles.append({'if': {'column_id': 'interval', 'row_index':i}, 'backgroundColor':'#C7F6C7', 'color': 'black'})
 
     
         # style_data_conditional = [{'if': {'column_id': x, 'row_index': y},

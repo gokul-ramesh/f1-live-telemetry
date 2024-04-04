@@ -121,8 +121,8 @@ while True:
     telemetry_data = pd.DataFrame()
 
     for driver_code, driver_number in driver_config['driver_number'].items():
-        if lap_number[driver_code] > TOTAL_LAPS:
-            break
+        #if lap_number[driver_code] > TOTAL_LAPS:
+        #    break
         try:
             merged_data = utils.merge_data_channels(car_data[car_data["driver_number"]==driver_number].sort_values(by="date"), location_data[location_data["driver_number"]==driver_number].sort_values(by="date"))
             merged_data['distance_l2'] = merged_data.apply(lambda row: utils.compute_l2((row.x, row.y), start_line, before_start_line, after_start_line), axis = 1)/10
@@ -151,19 +151,16 @@ while True:
             merged_data.drop([0],inplace=True)
             telemetry_data = pd.concat([telemetry_data, merged_data])
         except Exception as e:
-          if "Found array with 0 sample" in e.args[0]:
-              drivers_addn.append(driver_code)
-          else:
-              print(f'{driver_number} failed')
-              print(f'{e} exception')
+          print(f'{driver_number} failed')
+          print(f'{e} exception')
     telemetry_data.to_sql('telemetry', engine, if_exists = 'append', index = False)
     print(et, time.time() - t1, sorted(lap_number.items()))
     st = max(pd.to_datetime(car_data["date"].iloc[-1]), pd.to_datetime(location_data["date"].iloc[-1]))
-    for driver_code in drivers_addn:
-        print(f"{driver_code} is not in Race")
-        driver_config['driver_number'].pop(driver_code)
-        lap_number.pop(driver_code)
-        print("Removing from list")
+    #for driver_code in drivers_addn:
+    #    print(f"{driver_code} is not in Race")
+    #    driver_config['driver_number'].pop(driver_code)
+    #    lap_number.pop(driver_code)
+    #    print("Removing from list")
 
 
 
