@@ -1,7 +1,7 @@
 # To do 
 
 ## Dash app 
-  - [ ] highlight top 10 in position table
+  - [x] highlight top 10 in position table
   - [ ] add position vs lap plot
   - [x] add track position graph
   - [ ] filter out blue flags in race control table?
@@ -16,7 +16,7 @@
   
 ### Laptimes plot 
   - [ ] fix live laptimes fetch
-  - [ ] toggle laptimes by teams, useful for car level comparison
+  - [x] toggle laptimes by teams, useful for car level comparison
   - [x] add filter button 
 ### Telemetry plot 
   - [ ] 2 separate calls to sql table in telemetry plot, do 1 query & split in function (repeat for other suitable tables)
@@ -30,7 +30,7 @@
 
 ## Core logic 
   - [ ] memoise dash computations [link](https://dash.plotly.com/performance?_gl=1*bwwu1h*_ga*MTY4MDMyMDc1LjE3MTA3MDg3MDE.*_ga_6G7EE0JNSC*MTcxMTkzMDIzMC4zNS4xLjE3MTE5MzAzMzIuNTQuMC4w)
-  - [ ] add gap to leader table
+  - [x] add gap to leader table
   - [ ] add lap number adjust logic
   - [x] Update lap number counter to add last recorded distance 
   - [x] ~~Optimize start line detection~~ Moved to config file
