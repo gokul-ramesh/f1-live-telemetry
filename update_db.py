@@ -82,13 +82,14 @@ if os.path.isfile(db_file):
 print(f"Connecting to db using {db_file}")
 engine = create_engine(f"sqlite:///{db_file}", connect_args={'timeout': 20})
 
-lap_number,latest_distance = {}, {}
+lap_number,latest_distance,lap_map = {}, {}, {}
 for driver_code, driver_number in driver_config['driver_number'].items():
     if needed_session == "Race":
         lap_number[driver_code] = 0
     else:
         lap_number[driver_code] = 1
     latest_distance[driver_code] = np.nan
+    lap_map[driver_number] = {1:[pd.to_datetime(race_start_time),pd.to_datetime(race_start_time)]}
 
 #for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):
 st = race_start_time + timedelta(minutes=1)
@@ -108,6 +109,9 @@ while True:
     laptimes_data = utils.get_laptimes_data(session_key_race, race_start_time, et)
     race_control_data = utils.get_race_control_data(session_key_race, st, et)
     position_data = utils.get_position_data(session_key_race, et)
+    lap_map = utils.update_lap_maps(lap_map, laptimes_data, position_data)
+
+    position_data['lap_number'] = [utils.assign_lap(pd.to_datetime(row.date), row.driver_number, lap_map) for k,row in position_data.iterrows()]
     interval_data = utils.get_interval_data(session_key_race, st, et)
     if len(weather_data):
       weather_data.map(str).to_sql('weather', engine, if_exists='append', index=False)
