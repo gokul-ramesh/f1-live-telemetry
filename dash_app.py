@@ -20,15 +20,6 @@ import sys
 import warnings
 warnings.filterwarnings("ignore")
 
-# Bahrain 
-# corners = [711.9508171931816, 814.1876569292108, 936.7201493049793, 1506.9841172483643, 1787.9086361225473, 1880.658880160338, 1975.1619299965303, 2232.6789270606096, 2598.3923945375827, 2691.728150228979, 3466.886530179646, 3875.788302688632, 4084.7641184324057, 4889.970687598453, 4970.110027289251]
-# corners = [ 354.42083043,  439.27690256, 1080.70076863, 1232.24836987,
-#        1432.90920875, 1851.34924493, 1950.29260385, 2152.99296282,
-#        3258.34533469, 3367.69508844, 4078.44514627, 4341.73730817,
-#        4580.99734427, 4742.19833527] #Australia
-# # Azerbaijan
-# corners = [840.4395031422582, 925.2192705531841, 1168.2113212093552, 1741.685572018549, 2122.736856995752, 2364.579752964712, 2547.5431414033974, 2637.1095897460928, 2925.3814319017774, 3499.034858626688, 3638.214025589213, 3781.746397745988, 4025.8641801250633, 4156.471023673764, 4203.5096385535135, 4371.906121536575]
-
 #Session and circuit information
 
 track_config = pd.read_csv('config/track_config.csv')
@@ -264,9 +255,6 @@ latest_tele_toggle_group = html.Div(
     className='radio-group',
 )
 
-
-# df_position = pd.DataFrame(columns = ['driver_code', 'position', 'date', 'lap_number', 'fastest', 'f_lap','n', 'n-1', 'n-2'])
-
 # Define the layout of your app
 app.layout = html.Div([
 
@@ -296,13 +284,13 @@ app.layout = html.Div([
     dcc.Interval(id='pitstop-formatting-updater-component', interval=2000, n_intervals=0),
     
     dcc.Graph(id='scatter-plot'),
-    dash_table.DataTable(
-        id='corner-minspeed-table',
-        style_data={ 'border': '1px solid black' },
-        style_header={ 'border': '2px solid black', 'textAlign' : 'center'},
-        columns=[{'name': str(col), 'id': str(col)} for col in ['driver_code'] + [*range(1, 1+len(corners))]],
-        fill_width=False,
-    ),
+    # dash_table.DataTable(
+    #     id='corner-minspeed-table',
+    #     style_data={ 'border': '1px solid black' },
+    #     style_header={ 'border': '2px solid black', 'textAlign' : 'center'},
+    #     columns=[{'name': str(col), 'id': str(col)} for col in ['driver_code'] + [*range(1, 1+len(corners))]],
+    #     fill_width=False,
+    # ),
 
     dbc.Col([
             dbc.Row([html.H5("Group 1"), group1_buttons]),
@@ -515,7 +503,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     # fig['layout']['yaxis4']['title']="Brake"
     # fig['layout']['yaxis5']['title']="RPM"
     # fig['layout']['yaxis6']['title']="Gear"
-    fig.update_layout(uirevision=8, height=1400, width=1800, title_text=f'''{driver1.upper()} {lap1_number} : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()} {lap2_number}: {get_lap_dur(driver2_number,lap2_number)}s''')
+    fig.update_layout(uirevision=8, height=1400, width=1800, title_text=f'''{driver1.upper()} ({lap1_number}) : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()} ({lap2_number}): {get_lap_dur(driver2_number,lap2_number)}s''')
     fig.update_xaxes(showticklabels=False)
     fig.update_yaxes(minor=dict(tickvals=np.arange(0,350,10), tickmode='array', showgrid=True, ticks="inside"))
 
@@ -555,49 +543,49 @@ def update_lap_number(driver1, driver2, lap1, lap2, prev, next, latest, n_interv
             return lap1, lap2
 
 
-# Define callback to update the displayed scatter plot based on the selected table and columns
-@app.callback(
-    Output('corner-minspeed-table', 'data'),
-   [State('driver1-radiobuttons', 'value'),
-     State('lap1-radiobuttons', 'value'),
-     State('driver2-radiobuttons', 'value'),
-     State('lap2-radiobuttons', 'value'),
-     Input('telemetry-submit-value', 'n_clicks'),
-     Input('telemetry-updater-component', 'n_intervals')]
-)
-def update_corner_minspeed_table(driver1, lap1_number, driver2, lap2_number, n_clicks, n_intervals):
+# # Define callback to update the displayed scatter plot based on the selected table and columns
+# @app.callback(
+#     Output('corner-minspeed-table', 'data'),
+#    [State('driver1-radiobuttons', 'value'),
+#      State('lap1-radiobuttons', 'value'),
+#      State('driver2-radiobuttons', 'value'),
+#      State('lap2-radiobuttons', 'value'),
+#      Input('telemetry-submit-value', 'n_clicks'),
+#      Input('telemetry-updater-component', 'n_intervals')]
+# )
+# def update_corner_minspeed_table(driver1, lap1_number, driver2, lap2_number, n_clicks, n_intervals):
 
-    driver1_number = driver_config['driver_number'][driver1.upper()]
-    driver2_number = driver_config['driver_number'][driver2.upper()]
+#     driver1_number = driver_config['driver_number'][driver1.upper()]
+#     driver2_number = driver_config['driver_number'][driver2.upper()]
 
-    dist_ranges = [(corner - 30, corner + 30) for corner in corners]
-    query = f" SELECT driver_number, lap_number, actual_distance, speed FROM telemetry WHERE ((driver_number = {driver1_number} and lap_number = {lap1_number}) OR (driver_number = {driver2_number} and lap_number = {lap2_number})) AND ("
-    subquery = ' OR '.join([f'(actual_distance > {corner[0]} AND actual_distance < {corner[1]})' for corner in dist_ranges])
-    query += subquery + ')'  
+#     dist_ranges = [(corner - 30, corner + 30) for corner in corners]
+#     query = f" SELECT driver_number, lap_number, actual_distance, speed FROM telemetry WHERE ((driver_number = {driver1_number} and lap_number = {lap1_number}) OR (driver_number = {driver2_number} and lap_number = {lap2_number})) AND ("
+#     subquery = ' OR '.join([f'(actual_distance > {corner[0]} AND actual_distance < {corner[1]})' for corner in dist_ranges])
+#     query += subquery + ')'  
 
-    # print(query)
+#     # print(query)
 
-    df = pd.read_sql_query(query, engine)
-    # print(len(df))
-    # df['date'] = pd.to_datetime(df.date, format='ISO8601')
-    df[['actual_distance', 'speed']] = df[['actual_distance', 'speed']].astype(float)
+#     df = pd.read_sql_query(query, engine)
+#     # print(len(df))
+#     # df['date'] = pd.to_datetime(df.date, format='ISO8601')
+#     df[['actual_distance', 'speed']] = df[['actual_distance', 'speed']].astype(float)
 
-    # print(df)
+#     # print(df)
 
-    groups = df.groupby(['driver_number', 'lap_number'])
-    df1 = groups.get_group((driver1_number, lap1_number)).sort_values(by = 'actual_distance')
-    df2 = groups.get_group((driver2_number, lap2_number)).sort_values(by = 'actual_distance')
+#     groups = df.groupby(['driver_number', 'lap_number'])
+#     df1 = groups.get_group((driver1_number, lap1_number)).sort_values(by = 'actual_distance')
+#     df2 = groups.get_group((driver2_number, lap2_number)).sort_values(by = 'actual_distance')
 
-    dist1 = gaussian_filter1d(df1.actual_distance, sigma = 10)
-    dist2 = gaussian_filter1d(df2.actual_distance, sigma = 10)
+#     dist1 = gaussian_filter1d(df1.actual_distance, sigma = 10)
+#     dist2 = gaussian_filter1d(df2.actual_distance, sigma = 10)
 
-    data1 = [driver_config['driver_code'][driver1_number]] + [df1[(df1.actual_distance < corner[1]) & (df1.actual_distance > corner[0])].speed.round(0).min() for corner in dist_ranges]
-    data2 = [driver_config['driver_code'][driver2_number]] + [df2[(df2.actual_distance < corner[1]) & (df2.actual_distance > corner[0])].speed.round(0).min() for corner in dist_ranges]
-    # print(data1, data2)
-    columns = ['driver_code'] + [str(x) for x in range(1, 1+ len(corners))]
-    data = pd.concat([pd.DataFrame(data1).T, pd.DataFrame(data2).T])
-    data.columns = columns
-    return data.to_dict('records')
+#     data1 = [driver_config['driver_code'][driver1_number]] + [df1[(df1.actual_distance < corner[1]) & (df1.actual_distance > corner[0])].speed.round(0).min() for corner in dist_ranges]
+#     data2 = [driver_config['driver_code'][driver2_number]] + [df2[(df2.actual_distance < corner[1]) & (df2.actual_distance > corner[0])].speed.round(0).min() for corner in dist_ranges]
+#     # print(data1, data2)
+#     columns = ['driver_code'] + [str(x) for x in range(1, 1+ len(corners))]
+#     data = pd.concat([pd.DataFrame(data1).T, pd.DataFrame(data2).T])
+#     data.columns = columns
+#     return data.to_dict('records')
 
 @app.callback(
     Output('laptime-plot', 'figure'),
