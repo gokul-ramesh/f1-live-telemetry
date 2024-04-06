@@ -1,7 +1,9 @@
 # To do 
 
 ## Dash app 
-  - [ ] add track position graph
+  - [ ] highlight top 10 in position table
+  - [ ] add position vs lap plot
+  - [x] add track position graph
   - [ ] filter out blue flags in race control table?
   - [x] race control table 
   - [ ] add team radio table 
