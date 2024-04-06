@@ -84,7 +84,10 @@ engine = create_engine(f"sqlite:///{db_file}", connect_args={'timeout': 20})
 
 lap_number,latest_distance = {}, {}
 for driver_code, driver_number in driver_config['driver_number'].items():
-    lap_number[driver_code] = 0
+    if needed_session == "Race":
+        lap_number[driver_code] = 0
+    else:
+        lap_number[driver_code] = 1
     latest_distance[driver_code] = np.nan
 
 #for timestamp in pd.date_range(start_time, end_time, freq = f'{interval}s'):

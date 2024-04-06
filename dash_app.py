@@ -1083,13 +1083,22 @@ def update_position_table(n_intervals):
     # intervals = pd.read_sql_query('select gap_to_leader, interval, cast(driver_number as int) as driver_number from position', engine)
     # intervals = intervals[['gap_to_leader', 'interval', 'driver_number']].groupby('driver_number').agg('last').reset_index()
     # position = position.merge(intervals, on='driver_number', how='outer')
-    query = f"select * from interval order by date desc limit 2000"
-    df_interval = pd.read_sql_query(query, engine)
-    df_interval = df_interval[['gap_to_leader', 'interval', 'driver_number']].groupby('driver_number').agg('last').reset_index()
-    df_interval['driver_number'] = df_interval['driver_number'].astype(int)
-    df_interval[['gap_to_leader', 'interval']] = df_interval[['gap_to_leader', 'interval']].astype(float).round(2)
-
+    if needed_session=="Race":
+        query = f"select * from interval order by date desc limit 2000"
+        df_interval = pd.read_sql_query(query, engine)
+        df_interval = df_interval[['gap_to_leader', 'interval', 'driver_number']].groupby('driver_number').agg('last').reset_index()
+        df_interval['driver_number'] = df_interval['driver_number'].astype(int)
+        df_interval[['gap_to_leader', 'interval']] = df_interval[['gap_to_leader', 'interval']].astype(float).round(2)
+    else:
+        df_interval = pd.DataFrame()
+        df_interval['driver_number']=driver_config['driver_number'].values()
+        df_interval['gap_to_leader']=np.nan
+        df_interval['interval']=np.nan
     df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer').merge(df_interval, on='driver_number', how = 'outer').rename(columns = ({'gap_to_leader': 'gap', 'Latest': 'n', 'LatestBut1':'n-1', 'LatestBut2':'n-2'}))
+
+    if needed_session == "Qualifying":
+        df.sort_values(by='position', inplace=True)
+        df['interval'] = round(df['fastest'].astype(float).diff(), 3)
 
     return df[['date', 'driver_code', 'position', 'gap', 'interval', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2']].sort_values(by = 'position').to_dict('records')
 
