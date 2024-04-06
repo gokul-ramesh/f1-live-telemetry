@@ -126,7 +126,7 @@ def get_weather_data(session_key, start_time, end_time):
 def get_position_data(session_key, end_time):
   url = f'''https://api.openf1.org/v1/position?session_key={session_key}&date<={end_time}'''
   position = get_data(url)
-  position = position[['driver_number', 'date', 'position']].groupby('driver_number').agg('last').reset_index()
+  position = position[['driver_number', 'date', 'position']]
   # tminustime = end_time - timedelta(seconds=10)
   # url = f'''https://api.openf1.org/v1/intervals?session_key={session_key}&date<={end_time}&date>={tminustime}'''
   # intervals = get_data(url)
@@ -223,3 +223,21 @@ def compute_l2(car_location, start_line, before_start_line, after_start_line):
   track_car_vector = np.array([car_location[0] - start_line[0], car_location[1] - start_line[1]])
   s = (track_car_vector[0]**2 + track_car_vector[1]**2)**0.5
   return np.sign(np.dot(track_dir_vector, track_car_vector)) * s
+
+def update_lap_maps(lap_map, laptimes, position):
+  laptimes['date_start']=pd.to_datetime(laptimes['date_start'], format='mixed')
+  laptimes = laptimes.astype({"lap_number":int, "lap_duration":float, })
+  for k,v in laptimes.groupby('driver_number'):
+    v=v[v['lap_number']>max(lap_map[v.driver_number.iloc[0]].keys())]
+    if len(v):
+      for ki,row in v.iterrows():
+        if row.lap_number == 2:
+           lap_map[row.driver_number][1][1] = row.date_start
+        lap_map[row.driver_number][row.lap_number] = [row.date_start, row.date_start+timedelta(seconds=row.lap_duration)]
+  return lap_map
+    
+def assign_lap(date, driver_number, lap_map):
+  for lap, [start, end] in lap_map[driver_number].items():
+    if date < end and date > start:
+      return lap
+  return 1

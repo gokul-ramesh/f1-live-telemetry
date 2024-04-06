@@ -49,6 +49,7 @@ after_start_line = eval(track.after_start_line.iloc[0])
 
 session = utils.get_session(location, year)
 session_key = session.query(f" session_name == '{needed_session}'").session_key.iloc[0]
+race_start_time = pd.to_datetime(session.query(f" session_name == '{needed_session}'").date_start.iloc[0])
 
 # Connect to your SQL database
 engine = create_engine(f"sqlite:///data/{session_key}.db")
@@ -190,7 +191,7 @@ lap1_button_group = html.Div(
             labelCheckedClassName="active",
                 options=[{'label': html.Div([lap_number], style={'color': 'Black', 'font-size': 16, 'text-align': 'center'}), 'value':lap_number} for lap_number in range(0, 1 + TOTAL_LAPS)],
           # size="sm",
-		value=1,  # Default value
+		value=2,  # Default value
           # labelStyle= {"margin":"0.001rem"}
         ),
         html.Div(id="output"),
@@ -208,7 +209,7 @@ lap2_button_group = html.Div(
             labelClassName="btn btn-outline-secondary",
             labelCheckedClassName="active",
                 options=[{'label': html.Div([lap_number], style={'color': 'Black', 'font-size': 16, 'text-align': 'center'}), 'value':lap_number} for lap_number in range(0, 1 + TOTAL_LAPS)],
-		value=1,  # Default value
+		value=2,  # Default value
           # labelStyle= {"margin":"0.001rem"}
         ),
         html.Div(id="output"),
@@ -294,6 +295,7 @@ app.layout = html.Div([
     dcc.Interval(id='track-location-updater-component', interval=5000, n_intervals=0),
     dcc.Interval(id='pitstop-updater-component', interval=10000, n_intervals=0),
     dcc.Interval(id='pitstop-formatting-updater-component', interval=2000, n_intervals=0),
+    dcc.Interval(id='lap-position-updater-component', interval=10000, n_intervals=0),
     
     dcc.Graph(id='scatter-plot'),
     dash_table.DataTable(
@@ -339,6 +341,8 @@ app.layout = html.Div([
         html.Div([dcc.Graph(id='track-location-plot')], style={'width': '49%', 'display': 'inline-block'}),
         ], style={'display': 'flex'},
     ),
+
+    dcc.Graph(id='lap-position-plot'),
     
         html.Div([
         html.Div([
@@ -500,7 +504,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     for trace in drss:
         fig.add_trace(trace, row=1, col=1)
 
-    plot_list = ["Speed/DRS", f"Live Delta<br><-- {driver2.upper()} faster | {driver1.upper()} faster -->", "Throttle", "Brake", "RPM", "Gear"]
+    plot_list = ["Speed/DRS", f"Live Delta<br><-- {driver2.upper()} {lap2_number} faster | {driver1.upper()} {lap1_number} faster -->", "Throttle", "Brake", "RPM", "Gear"]
     for i in range(6):
       if i == 0:
         fig['layout']['yaxis']['title']= plot_list[i]
@@ -650,6 +654,40 @@ def update_laptime_plot(group_name, laptime_threshold, is_corrected, group1, gro
 
     #figure.update_traces(visible='legendonly', selector=dict(name=team_groups[groups][0]))
     return figure
+
+@app.callback(
+    Output('lap-position-plot', 'figure'),
+    [
+     Input('group-radiobuttons', 'value'),
+     Input('lap-position-updater-component', 'n_intervals'),
+     ]
+)
+
+def update_lap_position_plot(group_name, n_intervals):
+    query = 'select * from position'
+    df = pd.read_sql_query(query, engine)
+    query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
+    df_laps = pd.read_sql_query(query, engine).set_index('driver_number', drop=True)
+    grid = utils.get_starting_grid(session_key, race_start_time)
+    df=df.astype({'lap_number':int, 'driver_number':int, 'position':int})
+    df['driver_order'] = df.driver_number.map(driver_config['driver_code']).map(driver_config['driver_order'])
+    traces = []
+    visibility = {driver_no: True if driver_code in team_groups[group_name] else "legendonly" for driver_code, driver_no in driver_config['driver_number'].items()}
+    for k, v in df.sort_values(by = ['driver_order', 'lap_number']).groupby('driver_order'):
+        v=v.groupby('lap_number').agg('last')
+        x=np.arange(df_laps.loc[v.driver_number.iloc[0],'lap_number']+1)
+        y=[grid[v.driver_number.iloc[0]]]
+        for i in range(1,len(x)-1):
+            if i in v.index:
+                y.append(v.loc[i].position)
+            else:
+                y.append(y[-1])
+        traces.append(go.Scatter(x=x,y=y,mode='lines',name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', line=lines[v.driver_number.iloc[0]], visible=visibility[v.driver_number.iloc[0]]))
+    layout = go.Layout(title = 'Positions', xaxis=dict(title='Lap Number'), yaxis=dict(title='Position'), uirevision = 8, modebar_add=["v1hovermode","toggleSpikelines",], ) 
+    fig = go.Figure(data=traces, layout=layout)
+    fig.update_yaxes(autorange='reversed')
+    fig.update_xaxes(tickmode='array', tickvals=np.arange(0,TOTAL_LAPS+1))
+    return fig
 
 @app.callback(
     Output('maxspeed-table', 'columns'),
@@ -1062,10 +1100,10 @@ def update_position_table(n_intervals):
     # Replace this with your data update logic
 
     query = f"select * from position"
-    df = pd.read_sql_query(query, engine)
-    df[['driver_number', 'position']] = df[['driver_number', 'position']].astype(int)
+    df_pos = pd.read_sql_query(query, engine)
+    df = df_pos[['driver_number', 'position']].astype(int).groupby('driver_number').agg('last').reset_index()
     df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
-    df['date'] = pd.to_datetime(df['date'], format='mixed').dt.strftime('%H:%M:%S')
+    df['date'] = pd.to_datetime(df_pos['date'], format='mixed').dt.strftime('%H:%M:%S')
 
 
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
