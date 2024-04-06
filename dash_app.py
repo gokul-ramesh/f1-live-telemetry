@@ -313,7 +313,7 @@ app.layout = html.Div([
     html.Br(),
     dbc.Row([
         dbc.Col([group_button_group], align='left', ),
-        dbc.Col(["Lap Time Threshold", dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size='5px', step=1, value = 200, style={'width':'20%'}),], align='right', ),
+        dbc.Col(["Threshold ", dcc.Input(id="laptime-threshold-input", type="number", placeholder="", size='5px', step=1, value = 200, style={'width':'20%'}),], align='right', ),
         dbc.Col([fuel_toggle_group], align='right', ),
     ]),
     dcc.Graph(id='laptime-plot'),
@@ -515,7 +515,7 @@ def update_scatter_plot(driver1, lap1_number, driver2, lap2_number, n_clicks, n_
     # fig['layout']['yaxis4']['title']="Brake"
     # fig['layout']['yaxis5']['title']="RPM"
     # fig['layout']['yaxis6']['title']="Gear"
-    fig.update_layout(uirevision=8, height=1400, width=1800, title_text=f'''{driver1.upper()} : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()}: {get_lap_dur(driver2_number,lap2_number)}s''')
+    fig.update_layout(uirevision=8, height=1400, width=1800, title_text=f'''{driver1.upper()} {lap1_number} : {get_lap_dur(driver1_number, lap1_number)}s, {driver2.upper()} {lap2_number}: {get_lap_dur(driver2_number,lap2_number)}s''')
     fig.update_xaxes(showticklabels=False)
     fig.update_yaxes(minor=dict(tickvals=np.arange(0,350,10), tickmode='array', showgrid=True, ticks="inside"))
 
@@ -823,13 +823,23 @@ def update_position_style_data_conditional(data, n_intervals):
         else:
             conditional_styles.append({'if': {'column_id': 'n-2', 'row_index': i}, 'backgroundColor': '#00cc44',  'color': 'black',})
 
+        if float(df['position'][i]) <= 3:
+            conditional_styles.append({'if': {'column_id': 'position', 'row_index':i}, 'backgroundColor':'rgba(128, 128, 128, 1)', 'color': 'black'})
+
+        elif float(df['position'][i]) <= 10:
+            conditional_styles.append({'if': {'column_id': 'position', 'row_index':i}, 'backgroundColor':'rgba(176, 176, 176, 1)', 'color': 'black'})
+
+        elif float(df['position'][i]) <= 15:
+            conditional_styles.append({'if': {'column_id': 'position', 'row_index':i}, 'backgroundColor':'rgba(224, 224, 224, 1)', 'color': 'black'})
+        
+        
         color = get_color(df['lap_number'][i] - df['f_lap'][i])
         color_2 = get_color_2(current_lap - df['lap_number'][i])
         conditional_styles.append({'if': {'column_id': 'f_lap', 'row_index': i}, 'backgroundColor': f'''rgba({color}, {color}, {color}, 1)''', 'color': 'black'})
         conditional_styles.append({'if': {'column_id': 'driver_code', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
         conditional_styles.append({'if': {'column_id': 'date', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
         conditional_styles.append({'if': {'column_id': 'lap_number', 'row_index': i}, 'backgroundColor': f'''rgba({color_2}, {color_2}, {color_2}, 1)''', 'color': 'black'})
-        conditional_styles.append({'if': {'column_id': 'position', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
+        # conditional_styles.append({'if': {'column_id': 'position', 'row_index': i}, 'backgroundColor': driver_config['team_colour'][df.driver_code[i]], 'color': 'white'})
         if float(df['interval'][i]) < 1.0:
             conditional_styles.append({'if': {'column_id': 'interval', 'row_index':i}, 'backgroundColor':'#00cc44', 'color': 'black'})
         elif float(df['interval'][i]) > 1.0 and float(df['interval'][i]) < 2.0:
