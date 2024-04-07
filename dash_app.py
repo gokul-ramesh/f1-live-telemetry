@@ -323,8 +323,9 @@ app.layout = html.Div([
                                         {'if': {'column_id': 'lap_number'}, 'textAlign': 'center',},
                                         {'if': {'column_id': 'fastest'}, 'textAlign': 'center',},
                                         {'if': {'column_id': 'f_lap'}, 'textAlign': 'center',},
+                                        {'if': {'column_id': 'tyre_code'}, 'textAlign': 'left',},
                                         ],
-                columns=[{'name': col, 'id': col} for col in ['date', 'driver_code', 'position',  'gap', 'interval', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2']],
+                columns=[{'name': col, 'id': col} for col in ['date', 'driver_code', 'position',  'gap', 'interval', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2', 'tyre_code']],
                 fill_width=False,
             ),], 
             style={'width': '49%', 'display': 'inline-block'},
@@ -1096,7 +1097,6 @@ def update_position_table(n_intervals):
     df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
     df['date'] = pd.to_datetime(df_pos['date'], format='mixed').dt.strftime('%H:%M:%S')
 
-
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine)
 
@@ -1139,7 +1139,15 @@ def update_position_table(n_intervals):
         df.sort_values(by='position', inplace=True)
         df['interval'] = round(df['fastest'].astype(float).diff(), 3)
 
-    return df[['date', 'driver_code', 'position', 'gap', 'interval', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2']].sort_values(by = 'position').to_dict('records')
+    query = f"select stint_number, driver_number, lap_start, compound, tyre_age_at_start from stints order by driver_number, stint_number"
+    stints = pd.read_sql_query(query, engine).astype({'driver_number':int})
+    stints['tyre_code'] = stints.apply(lambda x: f'''{x['compound'][0]}{x['tyre_age_at_start']}-{x['lap_start']}''', axis = 1)
+    stints = pd.DataFrame({
+        'tyre_code': stints.groupby(['driver_number'])['tyre_code'].agg(lambda x: (x.tolist())),
+        }).fillna('')
+
+    df = df.merge(stints, on = 'driver_number').astype({'tyre_code':str})
+    return df[['date', 'driver_code', 'position', 'gap', 'interval', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2', 'tyre_code']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
     Output('track-location-plot', 'figure'),

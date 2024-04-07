@@ -123,6 +123,15 @@ def get_weather_data(session_key, start_time, end_time):
   else:
     return pd.DataFrame()
 
+def get_stint_data(session_key):
+  url = f'''https://api.openf1.org/v1/stints?&session_key={session_key}'''
+  stints = get_data(url)
+  if len(stints):
+    # weather['date'] = pd.to_datetime(weather['date'], format='ISO8601')
+    return stints
+  else:
+    return pd.DataFrame()
+
 def get_position_data(session_key, end_time):
   url = f'''https://api.openf1.org/v1/position?session_key={session_key}&date<={end_time}'''
   position = get_data(url)
