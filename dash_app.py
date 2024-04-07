@@ -38,6 +38,9 @@ start_line = eval(track.start_line.iloc[0])
 before_start_line = eval(track.before_start_line.iloc[0])
 after_start_line = eval(track.after_start_line.iloc[0])
 
+start_line_theta = np.arctan((after_start_line[1] - before_start_line[1])/(after_start_line[0] - before_start_line[0]))
+start_line_points = pd.DataFrame([(start_line[0] - r * np.sin(start_line_theta), start_line[1] + r * np.cos(start_line_theta)) for r in np.arange(-500, 500, 5)], columns = ['x', 'y'])
+
 session = utils.get_session(location, year)
 session_key = session.query(f" session_name == '{needed_session}'").session_key.iloc[0]
 race_start_time = pd.to_datetime(session.query(f" session_name == '{needed_session}'").date_start.iloc[0])
@@ -1163,17 +1166,18 @@ def update_track_location_plot(group_name, group1, group2, group3, groupn_interv
     traces = []
     visibility = {driver_no: True if driver_code in team_groups[group_name] else "legendonly" for driver_code, driver_no in driver_config['driver_number'].items()}
     traces.append(go.Scatter(x=df_layout.x, y=df_layout.y, mode='lines', line=dict(dash='dot',color='#404040', width = 3), hoverinfo='skip', showlegend=False))
+    traces.append(go.Scatter(x=start_line_points.x, y=start_line_points.y, mode='lines', line=dict(color='#808080', width = 5), hoverinfo='skip', showlegend=False))
     
     for k, v in df.sort_values(by = ['driver_order']).groupby('driver_order'):
-      traces.append(go.Scatter(x=v['x'], y=v['y'],
-                               text=[f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'],
-                               textposition='top right',
-                               textfont=dict(color=f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'),
-                               mode='markers+text',
-                               marker={'size': 18,'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'},
-                               name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}',
-                               legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}',
-                               visible=visibility[v.driver_number.iloc[0]]))
+        traces.append(go.Scatter(x=v['x'], y=v['y'],
+                                text=[f'{driver_config["driver_code"][v.driver_number.iloc[0]]}'],
+                                textposition='top right',
+                                textfont=dict(color=f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'),
+                                mode='markers+text',
+                                marker={'size': 18,'color': f'{driver_config["team_colour"][driver_config["driver_code"][v.driver_number.iloc[0]]]}'},
+                                name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}',
+                                legendgroup=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}',
+                                visible=visibility[v.driver_number.iloc[0]]))
 
     layout = go.Layout(title = f'''Track Location {df.date.iloc[0]}''', xaxis=dict(title='X'), yaxis=dict(title='Y'), uirevision = 8, height=800, width=800, yaxis_range=[df_layout.y.min()-500,df_layout.y.max()+500], xaxis_range=[df_layout.x.min()-500,df_layout.x.max()+500])
     figure = go.Figure(data=traces, layout=layout)
