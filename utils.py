@@ -132,8 +132,8 @@ def get_stint_data(session_key):
   else:
     return pd.DataFrame()
 
-def get_position_data(session_key, end_time):
-  url = f'''https://api.openf1.org/v1/position?session_key={session_key}&date<={end_time}'''
+def get_position_data(session_key, start_time end_time):
+  url = f'''https://api.openf1.org/v1/position?session_key={session_key}&date<={end_time}&date>={start_time}'''
   position = get_data(url)
   position = position[['driver_number', 'date', 'position']]
   # tminustime = end_time - timedelta(seconds=10)
@@ -162,6 +162,7 @@ def get_interval_data(session_key, start_time, end_time):
 def get_laptimes_data(session_key, start_time, end_time):
   url = f'''https://api.openf1.org/v1/laps?&session_key={session_key}&date_start<{end_time}&date_start>={start_time}'''
   laptimes = get_data(url)
+  laptimes = laptimes[['driver_number', 'lap_number', 'date_start', 'lap_duration', 'is_pit_out_lap']]
   laptimes.dropna(inplace=True)
   if len(laptimes):
     # laptimes['date_start'] = pd.to_datetime(laptimes['date_start'], format='ISO8601')
@@ -247,6 +248,6 @@ def update_lap_maps(lap_map, laptimes, position):
     
 def assign_lap(date, driver_number, lap_map):
   for lap, [start, end] in lap_map[driver_number].items():
-    if date < end and date > start:
+    if date <= end and date > start:
       return lap
-  return 1
+  return -2
