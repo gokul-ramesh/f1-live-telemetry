@@ -673,7 +673,7 @@ def update_lap_position_plot(group_name, n_intervals):
                 y.append(v.loc[i].position)
             else:
                 y.append(y[-1])
-        traces.append(go.Scatter(x=x,y=y,mode='lines',name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', line=lines[v.driver_number.iloc[0]], visible=visibility[v.driver_number.iloc[0]]))
+        traces.append(go.Scatter(x=x,y=y,mode='markers+lines',name=f'{driver_config["driver_code"][v.driver_number.iloc[0]]}', line=lines[v.driver_number.iloc[0]], visible=visibility[v.driver_number.iloc[0]]))
     layout = go.Layout(title = 'Positions', xaxis=dict(title='Lap Number'), yaxis=dict(title='Position'), uirevision = 8, modebar_add=["v1hovermode","toggleSpikelines",], ) 
     fig = go.Figure(data=traces, layout=layout)
     fig.update_yaxes(autorange='reversed')
