@@ -132,10 +132,14 @@ def get_stint_data(session_key):
   else:
     return pd.DataFrame()
 
-def get_position_data(session_key, start_time end_time):
+def get_position_data(session_key, start_time, end_time):
   url = f'''https://api.openf1.org/v1/position?session_key={session_key}&date<={end_time}&date>={start_time}'''
   position = get_data(url)
-  position = position[['driver_number', 'date', 'position']]
+  if len(position):
+    position = position[['driver_number', 'date', 'position']]
+    return position
+  return pd.DataFrame()
+  
   # tminustime = end_time - timedelta(seconds=10)
   # url = f'''https://api.openf1.org/v1/intervals?session_key={session_key}&date<={end_time}&date>={tminustime}'''
   # intervals = get_data(url)
@@ -143,11 +147,7 @@ def get_position_data(session_key, start_time end_time):
   #   intervals = pd.read_sql_query('select gap_to_leader, interval, cast(driver_number as int) as driver_number from position', engine)
   # intervals = intervals[['gap_to_leader', 'interval', 'driver_number']].groupby('driver_number').agg('last').reset_index()
   # position = position.merge(intervals, on='driver_number', how='outer')
-  if len(position):
-    # weather['date'] = pd.to_datetime(weather['date'], format='ISO8601')
-    return position
-  else:
-    return pd.DataFrame()
+  
   
 def get_interval_data(session_key, start_time, end_time):
     url = f'''https://api.openf1.org/v1/intervals?&session_key={session_key}&date<{end_time}&date>={start_time}'''
@@ -162,13 +162,14 @@ def get_interval_data(session_key, start_time, end_time):
 def get_laptimes_data(session_key, start_time, end_time):
   url = f'''https://api.openf1.org/v1/laps?&session_key={session_key}&date_start<{end_time}&date_start>={start_time}'''
   laptimes = get_data(url)
-  laptimes = laptimes[['driver_number', 'lap_number', 'date_start', 'lap_duration', 'is_pit_out_lap']]
-  laptimes.dropna(inplace=True)
+  
   if len(laptimes):
     # laptimes['date_start'] = pd.to_datetime(laptimes['date_start'], format='ISO8601')
-    return laptimes
-  else:
-    return pd.DataFrame()
+    laptimes = laptimes[['driver_number', 'lap_number', 'date_start', 'lap_duration', 'is_pit_out_lap']]
+    laptimes.dropna(inplace=True)
+    if len(laptimes):
+      return laptimes
+  return pd.DataFrame()
   
 def get_race_control_data(session_key, start_time, end_time):
   url = f'''https://api.openf1.org/v1/race_control?&session_key={session_key}&date<{end_time}&date>={start_time}'''
