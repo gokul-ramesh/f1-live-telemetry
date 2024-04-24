@@ -285,7 +285,7 @@ app.layout = html.Div([
     dcc.Interval(id='position-updater-component', interval=15000, n_intervals=0),
     dcc.Interval(id='track-location-updater-component', interval=5000, n_intervals=0),
     dcc.Interval(id='pitstop-updater-component', interval=10000, n_intervals=0),
-    dcc.Interval(id='pitstop-formatting-updater-component', interval=2000, n_intervals=0),
+    dcc.Interval(id='pitstop-formatting-updater-component', interval=10000, n_intervals=0),
     dcc.Interval(id='lap-position-updater-component', interval=10000, n_intervals=0),
     
     dcc.Graph(id='scatter-plot'),
@@ -1113,8 +1113,8 @@ def update_position_table(n_intervals):
         df_laptimes[['driver_number','lap_number']]=df_laptimes[['driver_number','lap_number']].astype(int)
     except:
         # df_ = pd.DataFrame.from_dict(driver_config['driver_code'], orient = 'index').reset_index().rename(columns = {'index':'driver_number', 0:'driver_code'}).drop(columns = ['driver_code']).assign(lap_duration = -100.0)
-        df_ = pd.DataFrame().assign(driver_number = driver_config['driver_number'].values(), lap_duration = -100.0)
-        df_laptimes = pd.concat([df_.assign(lap_number = -1), df_.assign(lap_number = -3), df_.assign(lap_number = -2)])
+        df_ = pd.DataFrame().assign(driver_number = driver_config['driver_number'].values())
+        df_laptimes = pd.concat([df_.assign(lap_number = -1, lap_duration = -99), df_.assign(lap_number = -3, lap_duration = -97), df_.assign(lap_number = -2, lap_duration = -98)]).reset_index().drop(columns = 'index')
         
     df_fast = pd.DataFrame()
     df_fast[['driver_number','fastest', 'f_lap']] = df_laptimes.loc[df_laptimes.groupby('driver_number').lap_duration.idxmin()][['driver_number','lap_duration','lap_number']]
@@ -1123,6 +1123,7 @@ def update_position_table(n_intervals):
     for k, v in df_laptimes.sort_values(by='lap_number').groupby('driver_number'):
         l = pd.concat([l, v[v.lap_number > max(v.lap_number) - 3].reset_index(drop=True).drop(columns=['lap_number'])])
     l.reset_index(inplace=True)
+    
     latest = l.pivot(columns='index', values='lap_duration', index='driver_number').reset_index()
     latest = latest.reindex(columns=latest.columns.to_list()+['Latest', 'LatestBut1', 'LatestBut2'], fill_value=np.nan)
     if len(latest.columns) < 7:
@@ -1154,6 +1155,7 @@ def update_position_table(n_intervals):
         # df_interval['interval']=np.nan
 
     df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer').merge(df_interval, on='driver_number', how = 'outer').rename(columns = ({'gap_to_leader': 'gap', 'Latest': 'n', 'LatestBut1':'n-1', 'LatestBut2':'n-2'}))
+    # df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number').merge(latest, on='driver_number').merge(df_interval, on='driver_number').rename(columns = ({'gap_to_leader': 'gap', 'Latest': 'n', 'LatestBut1':'n-1', 'LatestBut2':'n-2'}))
 
     if needed_session == "Qualifying":
         df.sort_values(by='position', inplace=True)
