@@ -45,6 +45,9 @@ session = utils.get_session(location, year)
 session_key = session.query(f" session_name == '{needed_session}'").session_key.iloc[0]
 race_start_time = pd.to_datetime(session.query(f" session_name == '{needed_session}'").date_start.iloc[0])
 
+GRID = utils.get_starting_grid(session_key, race_start_time)
+GRID_REVERSE = {v: k for k, v in GRID.items()}
+
 # Connect to your SQL database
 engine = create_engine(f"sqlite:///data/{session_key}.db")
 print(f"Loading from data/{session_key}.db")
@@ -660,7 +663,6 @@ def update_lap_position_plot(group_name, n_intervals):
     df = pd.read_sql_query(query, engine)
     query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
     df_laps = pd.read_sql_query(query, engine).set_index('driver_number', drop=True)
-    grid = utils.get_starting_grid(session_key, race_start_time)
     df=df.astype({'lap_number':int, 'driver_number':int, 'position':int})
     df['driver_order'] = df.driver_number.map(driver_config['driver_code']).map(driver_config['driver_order'])
     traces = []
@@ -668,7 +670,7 @@ def update_lap_position_plot(group_name, n_intervals):
     for k, v in df.sort_values(by = ['driver_order', 'lap_number']).groupby('driver_order'):
         v=v.groupby('lap_number').agg('last')
         x=np.arange(df_laps.loc[v.driver_number.iloc[0],'lap_number']+1)
-        y=[grid[v.driver_number.iloc[0]]]
+        y=[GRID[v.driver_number.iloc[0]]]
         for i in range(1,len(x)-1):
             if i in v.index:
                 y.append(v.loc[i].position)
@@ -1092,12 +1094,24 @@ def update_position_table(n_intervals):
     # Replace this with your data update logic
     try:
         query = f"select * from position"
-        df_pos = pd.read_sql_query(query, engine)
-        df = df_pos[['driver_number', 'position']].astype(int).groupby('driver_number').agg('last').reset_index()
+        df_pos = pd.read_sql_query(query, engine).astype({"position": int, "driver_number": int})
+        if len(df_pos.driver_number.unique()) < len(GRID.keys()):
+            # print(GRID.keys())
+            # print(df_pos.driver_number.unique().tolist())
+            for item in GRID.keys():
+                if item not in df_pos.driver_number.unique().tolist():
+                    # print('item', item)
+                    df_pos = pd.concat([pd.DataFrame([[item, race_start_time, GRID[item], 0]], columns=df_pos.columns), df_pos], ignore_index=True)
+                    # df_pos.loc[len(df_pos)] = [item, race_start_time, GRID[item], 0]
         # df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
+        # print(df_pos)
+        df = df_pos[['driver_number', 'position']].astype(int).groupby('driver_number').agg('last').reset_index()
         df['date'] = pd.to_datetime(df_pos['date'], format='mixed').dt.strftime('%H:%M:%S')
+        # df = df.reset_index()
     except:
         # df = pd.DataFrame.from_dict(driver_config['driver_code'], orient = 'index').reset_index().rename(columns = {'index':'driver_number', 0:'driver_code'}).assign(date = pd.Timestamp.now(tz='UTC').strftime('%H:%M:%S'), position = 1).drop(columns = ['driver_code'])
+        # print('in dummpy pos')
+        # print(utils.get_starting_grid(session_key, race_start_time))
         df = pd.DataFrame().assign(driver_number = driver_config['driver_number'].values(), date = pd.Timestamp.now(tz='UTC').strftime('%H:%M:%S'), position = 1)
 
     try:
@@ -1113,6 +1127,7 @@ def update_position_table(n_intervals):
         df_laptimes[['driver_number','lap_number']]=df_laptimes[['driver_number','lap_number']].astype(int)
     except:
         # df_ = pd.DataFrame.from_dict(driver_config['driver_code'], orient = 'index').reset_index().rename(columns = {'index':'driver_number', 0:'driver_code'}).drop(columns = ['driver_code']).assign(lap_duration = -100.0)
+        # print('in dummy laptimes')
         df_ = pd.DataFrame().assign(driver_number = driver_config['driver_number'].values())
         df_laptimes = pd.concat([df_.assign(lap_number = -1, lap_duration = -99), df_.assign(lap_number = -3, lap_duration = -97), df_.assign(lap_number = -2, lap_duration = -98)]).reset_index().drop(columns = 'index')
         
@@ -1174,6 +1189,7 @@ def update_position_table(n_intervals):
 
     df = df.merge(stints, on = 'driver_number').astype({'tyre_code':str})
     df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
+    # print(df[['driver_code', 'position','lap_number', 'fastest', 'f_lap']])
     return df[['date', 'driver_code', 'position', 'gap', 'interval', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2', 'tyre_code']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
