@@ -277,16 +277,16 @@ app.layout = html.Div([
         dbc.Row([latest_tele_toggle_group]),
     ]),
     #html.Button('Latest', id='telemetry-latest-value', n_clicks=0),
-    dcc.Interval(id='telemetry-updater-component', interval=5000, n_intervals=0),
-    dcc.Interval(id='weather-updater-component', interval=30000, n_intervals=0),
-    dcc.Interval(id='laptime-updater-component', interval=10000, n_intervals=0),
-    dcc.Interval(id='race-control-updater-component', interval=10000, n_intervals=0),
-    dcc.Interval(id='maxspeed-updater-component', interval=15000, n_intervals=0),
-    dcc.Interval(id='position-updater-component', interval=5000, n_intervals=0),
-    dcc.Interval(id='track-location-updater-component', interval=5000, n_intervals=0),
-    dcc.Interval(id='pitstop-updater-component', interval=10000, n_intervals=0),
-    dcc.Interval(id='pitstop-formatting-updater-component', interval=2000, n_intervals=0),
-    dcc.Interval(id='lap-position-updater-component', interval=10000, n_intervals=0),
+    # dcc.Interval(id='telemetry-updater-component', interval=5000, n_intervals=0),
+    # dcc.Interval(id='weather-updater-component', interval=30000, n_intervals=0),
+    # dcc.Interval(id='laptime-updater-component', interval=10000, n_intervals=0),
+    # dcc.Interval(id='race-control-updater-component', interval=10000, n_intervals=0),
+    # dcc.Interval(id='maxspeed-updater-component', interval=15000, n_intervals=0),
+    dcc.Interval(id='position-updater-component', interval=15000, n_intervals=0),
+    # dcc.Interval(id='track-location-updater-component', interval=5000, n_intervals=0),
+    # dcc.Interval(id='pitstop-updater-component', interval=10000, n_intervals=0),
+    dcc.Interval(id='pitstop-formatting-updater-component', interval=15000, n_intervals=0),
+    # dcc.Interval(id='lap-position-updater-component', interval=10000, n_intervals=0),
     
     dcc.Graph(id='scatter-plot'),
     # dash_table.DataTable(
@@ -1090,21 +1090,35 @@ def update_samples_table(n_intervals):
 )
 def update_position_table(n_intervals):
     # Replace this with your data update logic
+    try:
+        query = f"select * from position"
+        df_pos = pd.read_sql_query(query, engine)
+        df = df_pos[['driver_number', 'position']].astype(int).groupby('driver_number').agg('last').reset_index()
+        # df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
+        df['date'] = pd.to_datetime(df_pos['date'], format='mixed').dt.strftime('%H:%M:%S')
+    except:
+        # df = pd.DataFrame.from_dict(driver_config['driver_code'], orient = 'index').reset_index().rename(columns = {'index':'driver_number', 0:'driver_code'}).assign(date = pd.Timestamp.now(tz='UTC').strftime('%H:%M:%S'), position = 1).drop(columns = ['driver_code'])
+        df = pd.DataFrame().assign(driver_number = driver_config['driver_number'].values(), date = pd.Timestamp.now(tz='UTC').strftime('%H:%M:%S'), position = 1)
 
-    query = f"select * from position"
-    df_pos = pd.read_sql_query(query, engine)
-    df = df_pos[['driver_number', 'position']].astype(int).groupby('driver_number').agg('last').reset_index()
-    df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
-    df['date'] = pd.to_datetime(df_pos['date'], format='mixed').dt.strftime('%H:%M:%S')
+    try:
+        query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
+        df_laps = pd.read_sql_query(query, engine)
+    except:
+        # df_laps = pd.DataFrame.from_dict(driver_config['driver_code'], orient = 'index').reset_index().rename(columns = {'index':'driver_number', 0:'driver_code'}).assign(lap_number = -1).drop(columns = ['driver_code'])
+        df_laps = pd.DataFrame().assign(driver_number = driver_config['driver_number'].values(), lap_number = -1)
 
-    query = f"select driver_number, max(lap_number) as lap_number from telemetry group by driver_number"
-    df_laps = pd.read_sql_query(query, engine)
-
-    query = f"select driver_number, lap_duration, lap_number from laptimes"
-    df_laptimes = pd.read_sql_query(query, engine).astype(float).dropna()
-    df_laptimes[['driver_number','lap_number']]=df_laptimes[['driver_number','lap_number']].astype(int)
+    try:
+        query = f"select driver_number, lap_duration, lap_number from laptimes"
+        df_laptimes = pd.read_sql_query(query, engine).astype(float).dropna()
+        df_laptimes[['driver_number','lap_number']]=df_laptimes[['driver_number','lap_number']].astype(int)
+    except:
+        # df_ = pd.DataFrame.from_dict(driver_config['driver_code'], orient = 'index').reset_index().rename(columns = {'index':'driver_number', 0:'driver_code'}).drop(columns = ['driver_code']).assign(lap_duration = -100.0)
+        df_ = pd.DataFrame().assign(driver_number = driver_config['driver_number'].values(), lap_duration = -100.0)
+        df_laptimes = pd.concat([df_.assign(lap_number = -1), df_.assign(lap_number = -3), df_.assign(lap_number = -2)])
+        
     df_fast = pd.DataFrame()
     df_fast[['driver_number','fastest', 'f_lap']] = df_laptimes.loc[df_laptimes.groupby('driver_number').lap_duration.idxmin()][['driver_number','lap_duration','lap_number']]
+
     l = pd.DataFrame()
     for k, v in df_laptimes.sort_values(by='lap_number').groupby('driver_number'):
         l = pd.concat([l, v[v.lap_number > max(v.lap_number) - 3].reset_index(drop=True).drop(columns=['lap_number'])])
@@ -1118,35 +1132,46 @@ def update_position_table(n_intervals):
             latest['Latest'] = latest[0]
     else:
         latest[['Latest','LatestBut1','LatestBut2']] = latest.iloc[:,3:0:-1]
-        
+
     # intervals = pd.read_sql_query('select gap_to_leader, interval, cast(driver_number as int) as driver_number from position', engine)
     # intervals = intervals[['gap_to_leader', 'interval', 'driver_number']].groupby('driver_number').agg('last').reset_index()
     # position = position.merge(intervals, on='driver_number', how='outer')
-    if needed_session=="Race":
+
+    # if needed_session == "Race":
+    try:
         query = f"select * from interval order by date desc limit 2000"
         df_interval = pd.read_sql_query(query, engine)
         df_interval = df_interval[['gap_to_leader', 'interval', 'driver_number']].groupby('driver_number').agg('last').reset_index()
         df_interval['driver_number'] = df_interval['driver_number'].astype(int)
         df_interval[['gap_to_leader', 'interval']] = df_interval[['gap_to_leader', 'interval']].astype(float).round(2)
-    else:
-        df_interval = pd.DataFrame()
-        df_interval['driver_number']=driver_config['driver_number'].values()
-        df_interval['gap_to_leader']=np.nan
-        df_interval['interval']=np.nan
+    # else:
+    except:
+        # df_interval = pd.DataFrame.from_dict(driver_config['driver_code'], orient = 'index').reset_index().rename(columns = {'index':'driver_number', 0:'driver_code'}).drop(columns = ['driver_code']).assign(gap_to_leader = -1, interval = -1)
+        df_interval = pd.DataFrame().assign(driver_number = driver_config['driver_number'].values(), gap_to_leader = -1, interval = -1)
+        # df_interval = pd.DataFrame()
+        # df_interval['driver_number']=driver_config['driver_number'].values()
+        # df_interval['gap_to_leader']=np.nan
+        # df_interval['interval']=np.nan
+
     df = df.merge(df_laps, on = 'driver_number').merge(df_fast, on='driver_number', how = 'outer').merge(latest, on='driver_number', how = 'outer').merge(df_interval, on='driver_number', how = 'outer').rename(columns = ({'gap_to_leader': 'gap', 'Latest': 'n', 'LatestBut1':'n-1', 'LatestBut2':'n-2'}))
 
     if needed_session == "Qualifying":
         df.sort_values(by='position', inplace=True)
         df['interval'] = round(df['fastest'].astype(float).diff(), 3)
-
-    query = f"select stint_number, driver_number, lap_start, compound, tyre_age_at_start from stints order by driver_number, stint_number"
-    stints = pd.read_sql_query(query, engine).astype({'driver_number':int})
-    stints['tyre_code'] = stints.apply(lambda x: f'''{x['compound'][0]}{x['tyre_age_at_start']}-{x['lap_start']}''', axis = 1)
-    stints = pd.DataFrame({
-        'tyre_code': stints.groupby(['driver_number'])['tyre_code'].agg(lambda x: (x.tolist())),
-        }).fillna('')
+    try:
+        query = f"select stint_number, driver_number, lap_start, compound, tyre_age_at_start from stints order by driver_number, stint_number"
+        stints = pd.read_sql_query(query, engine).astype({'driver_number':int})
+        stints['tyre_code'] = stints.apply(lambda x: f'''{x['compound'][0]}{x['tyre_age_at_start']}-{x['lap_start']}''', axis = 1)
+        stints = pd.DataFrame({
+            'tyre_code': stints.groupby(['driver_number'])['tyre_code'].agg(lambda x: (x.tolist())),
+            }).fillna('')
+    except:
+        # stints = pd.DataFrame.from_dict(driver_config['driver_code'], orient = 'index').reset_index().rename(columns = {'index':'driver_number', 0:'driver_code'}).assign(tyre_code = 'NA').drop(columns = 'driver_code')
+        stints = pd.DataFrame().assign(driver_number = driver_config['driver_number'].values(), tyre_code = 'NA')
+        
 
     df = df.merge(stints, on = 'driver_number').astype({'tyre_code':str})
+    df['driver_code'] = df['driver_number'].map(driver_config['driver_code'])
     return df[['date', 'driver_code', 'position', 'gap', 'interval', 'lap_number', 'fastest', 'f_lap', 'n', 'n-1', 'n-2', 'tyre_code']].sort_values(by = 'position').to_dict('records')
 
 @app.callback(
