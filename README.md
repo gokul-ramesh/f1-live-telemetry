@@ -2,7 +2,7 @@
 
 Build a session database of F1 telemetry and session data for a given circuit and session, then view it in a live or replay Dash dashboard.
 
-**Quick start:** `pip install -r requirements.txt` → create `config/`, `data/`, `knn/`, `track_layout/` if needed → `python update_db.py Melbourne 2024 Race 60` → `python dash_app.py Melbourne 2024 Race` → open http://127.0.0.1:8050
+**Quick start:** `pipenv install` → create `config/`, `data/`, `knn/`, `track_layout/` if needed → `pipenv run python update_db.py Melbourne 2024 Race 60` → `pipenv run python dash_app.py Melbourne 2024 Race` → open http://127.0.0.1:8050
 
 ---
 
@@ -63,7 +63,7 @@ flowchart LR
 ### 3.1 Requirements
 
 - **Python:** 3.x compatible with the listed packages.
-- **Dependencies** (see `requirements.txt`): `dash`, `dash_bootstrap_components`, `numpy`, `pandas`, `plotly`, `Requests`, `scikit_learn`, `scipy`, `SQLAlchemy`, `tqdm`.
+- **Dependencies** (see `Pipfile`): `dash`, `dash-bootstrap-components`, `numpy`, `pandas`, `plotly`, `requests`, `scikit-learn`, `scipy`, `sqlalchemy`, `tqdm`. Install with `pipenv install`.
 - **External:** Open F1 API (network); no API key.
 - **Config (mandatory):**
   - `config/track_config.csv`: columns include `circuit_location`, `circuit_length`, `total_laps`, `start_line`, `before_start_line`, `after_start_line`, `corners` (Python-evaluated tuples/lists). Circuit names must match API `location` (e.g. `Sakhir`, `Melbourne`).
